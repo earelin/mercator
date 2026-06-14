@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (pending approval). *(Updated: single Java stack; daily incremental moved into the
+Accepted. *(Updated: single Java stack; daily incremental moved into the
 server's scheduler; common code extracted to a shared library — see Context.)*
 
 ## Context

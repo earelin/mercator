@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (pending approval). *(Updated: daily incremental moved in-server; HTTP ingest API
+Accepted. *(Updated: daily incremental moved in-server; HTTP ingest API
 dropped — see Decision.)*
 
 ## Context

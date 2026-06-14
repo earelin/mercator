@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (pending approval). *(Updated 2026 with the per-document XML finding below — see Context.)*
+Accepted. *(Updated 2026 with the per-document XML finding below — see Context.)*
 
 ## Context
 
