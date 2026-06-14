@@ -15,8 +15,10 @@ multi-hop connections — implemented as indexed joins and recursive CTEs inside
 - **Shared administrator** — self-join `appointment` on `person_id` where validity overlaps;
   return the two companies, the shared (resolved) person, the role(s) and the overlapping
   period. Carries the person's **confidence**.
-- **Shared registered address** — join `company_address` on `address_id` (after
-  normalisation), optionally constrained to overlapping validity.
+- **Shared registered address** — self-join `company_address` on `address_id` (stable via
+  `resolve_address`'s exact-normalised key). Spans the **full address history** by default
+  (companies that were *ever* domiciled at the same address, current or past intervals);
+  optionally constrained to overlapping validity for companies co-located at the same time.
 - **Multi-hop connection** — `WITH RECURSIVE` traversal of the company⇄person graph, bounded
   by a hop limit, with **cycle detection** via a carried path array; returns the path
   between two companies (or all companies within N hops of one).

@@ -13,6 +13,11 @@ Castellano) already encodes all of this in `regex.py`, `acto.py`, `cargo.py`, `c
 `provincia.py`, `sociedad.py`. It is unmaintained and parses PDFs, but its dictionaries are
 directly reusable. Mercator is already GPLv3.
 
+Among the open-source BORME tooling surveyed, **`libreborme`** — the Django web application
+([github.com/PabloCastellano/libreborme](https://github.com/PabloCastellano/libreborme))
+built on top of `bormeparser` — produced the **best extraction results**, which is what
+makes its underlying parser the most attractive prior art to port.
+
 ## Decision
 
 **Reuse bormeparser's regex and act/role/province dictionaries** rather than rebuilding this
@@ -33,5 +38,7 @@ license were ever required, the dictionary tables would be reimplemented cleanly
 
 - **Build all dictionaries from scratch** — slower and error-prone; only justified if a
   non-GPL license were mandatory; not the case here.
+- **Other open-source BORME parsers** — evaluated, but `libreborme`/`bormeparser` gave the
+  best extraction results of the surveyed options, so they are the chosen prior art.
 - **Depend on bormeparser as a library at runtime** — unmaintained and PDF-oriented;
   rejected in favour of vendoring/porting the dictionaries.

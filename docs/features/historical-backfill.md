@@ -13,6 +13,11 @@ acts into staging and merges them into the live model via the shared resolution 
 ## Functional behaviour
 
 - Iterate dates 2009-01-02 → today via [summary-enumeration](summary-enumeration.md).
+- **Configurable date range.** The crawl span is bounded by CLI parameters, defaulting to
+  the full 2009-01-02 → today range. A `--month YYYY-MM` shorthand restricts the run to a
+  single calendar month (equivalent to setting start/end to that month's bounds) — intended
+  for **initial testing** so a small, representative slice can be ingested without a full
+  multi-day backfill. Bounded runs remain resumable and idempotent like a full run.
 - For each Sección A document: fetch ([document-fetch](document-fetch.md)), parse
   ([act-parsing](act-parsing.md)), normalise
   ([entity-extraction-normalisation](entity-extraction-normalisation.md)), and bulk-`COPY`
@@ -36,7 +41,8 @@ flowchart LR
 
 ## Inputs / outputs
 
-- **Input:** start/end dates; rate-limit and batch-size config; DB connection.
+- **Input:** date-range bounds — explicit start/end dates or a `--month YYYY-MM` shorthand
+  (defaults to the full 2009→today range); rate-limit and batch-size config; DB connection.
 - **Output:** populated live tables; `borme_log` reflecting per-document status; cached raw
   documents.
 
@@ -57,6 +63,8 @@ flowchart LR
 ## Implementation issues
 
 - [ ] Backfill driver: date iteration + work queue over enumeration/fetch/parse.
+- [ ] CLI date-range parameters: explicit start/end dates + `--month YYYY-MM` shorthand for
+      single-month test runs (default = full 2009→today range).
 - [ ] `COPY`-based bulk loader into `staging_act`.
 - [ ] Merge step calling resolution functions + chunked upserts + `borme_log` updates.
 - [ ] Resume logic from `borme_log`; per-document error isolation + retry.

@@ -38,10 +38,6 @@ section codes:
 | Sección Segunda — *Anuncios y avisos legales* | **BORME-C** | Convocatorias de juntas, fusiones/escisiones, disoluciones, reducciones de capital with creditor opposition, etc. Organised into *apartados* by act type. | Out of scope for V1. |
 | Sumario | **BORME-S** | The daily summary listing every document. | Used to enumerate documents. |
 
-> "Otros actos publicados en el Registro Mercantil" is **not** a sub-apartado of Sección A —
-> it is a distinct section with its own `BORME-B-…` document ids.
-> Concursal acts (sometimes called a "third section") are ignored initially.
-
 ## Formats available per section
 
 Confirmed against live data back to 2009-01-02 — every Sección A/B/C item in the summary
@@ -56,14 +52,6 @@ exposes **three** representations:
 - **HTML / plain text** (`url_html` → `txt.php?id=…`) — a full HTML page (site chrome +
   metadata header + the same text body). Usable as a fallback, but requires stripping HTML
   chrome that the XML avoids.
-
-> **Correction (verified 2026):** earlier drafts stated structured XML existed *only* for
-> Sección C and that Sección A exposed only `url_pdf`. Both are false: the summary provides
-> `url_pdf`, `url_xml` and `url_html` for A, B and C, and per-document XML covers Sección A
-> back to 2009. The act *fields* (Constitución, Domicilio, Nombramientos, Datos
-> registrales…) are still free Spanish prose inside `<p class="parrafo">` and must be
-> regex-parsed — the XML removes HTML scraping and gives clean segmentation, not parsed
-> fields.
 
 ## Endpoints
 

@@ -22,7 +22,8 @@ Live tables (conceptual columns; see [Spec 4](../specs/04-data-model.md)):
   `GIN (norm_name gin_trgm_ops)`.
 - **person** — `raw_name`, `norm_name`; `GIN (norm_name gin_trgm_ops)`.
 - **address** — `raw_text`, `norm_text`, `municipality`, `province_code`;
-  `GIN (norm_text gin_trgm_ops)`.
+  `UNIQUE (norm_text, province_code)` (stable `address_id` for shared-address joins via
+  `resolve_address`); `GIN (norm_text gin_trgm_ops)` for fuzzy search.
 - **borme_act** — `borme_id`, `cve`, `pub_date`, `province_code`, `company_id`, `act_type`,
   `datos_registrales`, `raw_block`;
   `UNIQUE (borme_id, company_id, act_type, datos_registrales)` for idempotency.

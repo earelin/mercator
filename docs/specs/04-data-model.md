@@ -54,6 +54,11 @@ erDiagram
   resolved by normalised name plus corroboration (co-occurrence in the same company or
   registry). Person links are stored as **scored candidates**, never as hard facts
   ([ADR-0009](../architecture/0009-probabilistic-person-resolution.md)).
+- **Addresses** are identified by their **exact normalised text within a province**
+  (`norm_text` + province). Identical addresses collapse to one row so companies sharing a
+  domicile share one `address_id`; this is what makes the shared-address link a deterministic
+  join (see [Spec 5](05-link-detection.md)). Spelling variants are bridged by trigram
+  *search*, never by merging address identity.
 - **Resolution lives in exactly one place.** The parser emits normalised-but-unresolved
   records; deciding "is this an existing company/person" happens only in the shared
   resolution functions, called by both write paths

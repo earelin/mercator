@@ -3,8 +3,8 @@
 ## Summary
 
 The single, shared logic that decides whether a normalised record is a new entity or matches
-an existing one — companies by registry key, persons by scored fuzzy matching — invoked
-identically by both write paths.
+an existing one — companies by registry key, persons by scored fuzzy matching, addresses by
+exact normalised text — invoked identically by both write paths.
 
 ## Related specs / ADRs
 
@@ -13,7 +13,8 @@ identically by both write paths.
 
 ## Functional behaviour
 
-Implemented as shared PL/pgSQL functions `resolve_company(...)` and `resolve_person(...)`
+Implemented as shared PL/pgSQL functions `resolve_company(...)`, `resolve_person(...)` and
+`resolve_address(...)`
 (see [ADR-0007](../architecture/0007-single-source-of-truth-entity-resolution.md)), wrapped
 by the `shared` library's `IngestionService`; the `ingester` backfill merge and the `server`
 scheduled daily job both call them — **one definition, both callers**.
@@ -27,6 +28,12 @@ scheduled daily job both call them — **one definition, both callers**.
   co-occurrence in the same company/registry. Return a **confidence score**; never hard-merge
   ambiguous persons — surface as candidates
   ([ADR-0009](../architecture/0009-probabilistic-person-resolution.md)).
+- **`resolve_address`** — deterministic get-or-create on the natural key
+  `(norm_text, province_code)`: identical normalised addresses collapse to a single
+  `address_id`, so the shared-registered-address link ([link-queries](link-queries.md)) is a
+  reliable equi-join rather than a fuzzy scan. **Identity is exact-normalised, not fuzzy** —
+  the `norm_text gin_trgm_ops` index serves *search* (spelling variants), never address
+  identity, mirroring the exact-key-first rule for companies.
 - **Conservative bias:** a missed merge is a duplicate (recoverable); a wrong merge is
   corruption — prefer not to merge when uncertain.
 
@@ -36,14 +43,17 @@ scheduled daily job both call them — **one definition, both callers**.
 flowchart LR
     NR["normalised record"] --> RC["resolve_company<br/>→ company_id (+confidence)"]
     NR --> RP["resolve_person per appointment<br/>→ person_id (+confidence)"]
-    RC --> U["caller upserts<br/>acts / appointments / addresses"]
+    NR --> RA["resolve_address<br/>→ address_id (exact norm key)"]
+    RC --> U["caller upserts<br/>acts / appointments / company_address"]
     RP --> U
+    RA --> U
 ```
 
 ## Inputs / outputs
 
-- **Input:** a normalised-unresolved record (company stub, person stubs, address).
-- **Output:** resolved entity ids with confidence; created entities where no match.
+- **Input:** a normalised-unresolved record (company stub, person stubs, address stub).
+- **Output:** resolved entity ids (company/person with confidence, address by exact key);
+  created entities where no match.
 
 ## Edge cases
 
@@ -52,6 +62,9 @@ flowchart LR
   thresholds guard this.
 - **Company rename** — natural key (Hoja) keeps identity stable across denominación changes.
 - **Threshold tuning** — exposed as configuration; defaults conservative.
+- **Address variants** — the same domicile written differently (abbreviations, accents)
+  normalises to one `norm_text` where possible; residual variants stay distinct addresses and
+  are bridged by the trigram *search*, not by merging identity.
 
 ## Acceptance criteria
 
@@ -64,6 +77,7 @@ flowchart LR
 
 - [ ] `resolve_company` PL/pgSQL function (Hoja+province key, name fallback, get-or-create).
 - [ ] `resolve_person` PL/pgSQL function (exact → trigram → fuzzystrmatch + confidence).
+- [ ] `resolve_address` PL/pgSQL function (get-or-create on exact `(norm_text, province_code)`).
 - [ ] Co-occurrence corroboration for person matching.
 - [ ] Confidence scoring + low-confidence flagging surfaced to callers.
 - [ ] Resolution test suite (golden cases: renames, homonyms, accent/spelling variants).

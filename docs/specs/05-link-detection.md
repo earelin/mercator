@@ -17,7 +17,10 @@ about each.
    held, within overlapping validity) an administrative role in both. Returns the companies,
    the shared person, and the overlapping period.
 2. **Shared registered address.** Two companies are linked if they share the same
-   normalised registered address (optionally constrained to overlapping validity).
+   normalised registered address. Each company keeps its **full address history**
+   (temporal `company_address` intervals), so the match spans current *and* past domiciles by
+   default; it can optionally be constrained to overlapping validity (co-located at the same
+   time).
 3. **Multi-hop connection.** "Companies connected through people" — bounded traversal of
    the company⇄person graph (e.g. companies 2–3 hops away through shared individuals).
    Traversal carries a path and detects cycles.
