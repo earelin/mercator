@@ -8,6 +8,7 @@
 #   4. Docker Compose files        -> dclint (via npx)
 # And then:
 #   5. Gradle build                -> ./gradlew build
+#   6. SQL lint                    -> sqlfluff lint
 #
 # Run it manually:        ./script/ci.sh
 # Skip external links:    CHECK_EXTERNAL=0 ./script/ci.sh
@@ -114,6 +115,15 @@ if [ -f ./gradlew ]; then
   if ./gradlew build; then ok "gradle build"; else err "gradle build failed"; fail=1; fi
 else
   err "gradlew not found — run: gradle wrapper --gradle-version 9.5.1"; fail=1
+fi
+
+# --- 6) SQL lint ----------------------------------------------------------
+bold "SQL lint (sqlfluff)"
+SQL_DIR="server/src/main/resources/db/migration"
+if command -v sqlfluff >/dev/null 2>&1; then
+  if sqlfluff lint "$SQL_DIR"; then ok "SQL lint"; else err "SQL lint issues"; fail=1; fi
+else
+  err "sqlfluff not found — install: pip install sqlfluff (or: brew install sqlfluff)"; fail=1
 fi
 
 # --- Result ---------------------------------------------------------------

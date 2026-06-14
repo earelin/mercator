@@ -1,0 +1,15 @@
+[sqlfluff]
+dialect = postgres
+templater = raw
+max_line_length = 120
+
+# LT01: column-type alignment — multiple spaces between name and type are
+#        intentional for readability; single-space enforcement disabled.
+# LT02: continuation-line indentation — ALTER TABLE … ADD COLUMN and multi-row
+#        VALUES blocks use standard indented continuation lines that LT02
+#        misidentifies as top-level indentation.
+# PG01: CREATE INDEX CONCURRENTLY — Flyway wraps each migration in a transaction;
+#        CONCURRENTLY is incompatible with transactions and would fail.
+# RF04: keywords as identifiers — 'code' (province) and 'role' (appointment)
+#        are intentional domain column names.
+exclude_rules = LT01,LT02,PG01,RF04

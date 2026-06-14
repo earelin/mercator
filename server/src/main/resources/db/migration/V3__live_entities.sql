@@ -17,7 +17,7 @@ CREATE TABLE company (
     CONSTRAINT uq_company_hoja_province UNIQUE (reg_hoja, province_code)
 );
 
-CREATE INDEX idx_company_norm_name ON company USING GIN (norm_name gin_trgm_ops);
+CREATE INDEX idx_company_norm_name ON company USING gin (norm_name gin_trgm_ops);
 
 -- person: no stable identifier; probabilistic resolution only (ADR-0009).
 CREATE TABLE person (
@@ -28,7 +28,7 @@ CREATE TABLE person (
     CONSTRAINT pk_person PRIMARY KEY (id)
 );
 
-CREATE INDEX idx_person_norm_name ON person USING GIN (norm_name gin_trgm_ops);
+CREATE INDEX idx_person_norm_name ON person USING gin (norm_name gin_trgm_ops);
 
 -- address: deduped by (norm_text, province_code); shared address_id enables
 -- deterministic shared-address link joins (Spec 5).
@@ -42,4 +42,4 @@ CREATE TABLE address (
     CONSTRAINT uq_address_norm_province UNIQUE (norm_text, province_code)
 );
 
-CREATE INDEX idx_address_norm_text ON address USING GIN (norm_text gin_trgm_ops);
+CREATE INDEX idx_address_norm_text ON address USING gin (norm_text gin_trgm_ops);
