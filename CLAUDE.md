@@ -95,6 +95,13 @@ These are the load-bearing decisions; preserve them unless a new ADR supersedes 
   anonymous in local dev; auth is **environment-toggled, enabled by default, fail-closed**.
   All config is 12-factor (env vars + Micronaut environments, one artifact); secrets are
   injected at run time, never committed or baked into images. (ADR-0013)
+- **Hexagonal architecture (ports and adapters).** The domain/application core (in `shared`)
+  depends on nothing outward — no Micronaut, no JDBC, no HTTP; dependencies point **inward
+  only**. I/O lives in adapters behind core-owned ports (BORME source, persistence/resolution,
+  link queries are driven ports; the API and the scheduled/CLI jobs are driving adapters). The
+  DB-side resolution (ADR-0007) is the *implementation* of a core-owned resolution port, not an
+  exception to the rule. Apply where a real boundary exists — don't manufacture ports for
+  trivial internals. (ADR-0014)
 
 ## Licensing constraint when porting prior art
 
