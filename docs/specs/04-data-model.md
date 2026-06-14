@@ -17,7 +17,9 @@ at a conceptual level. The concrete tables live in
 ## Entities
 
 - **Company** — a registered company. Carries raw and normalised name, legal form,
-  province, and registry coordinates (Hoja, Tomo…), plus first/last-seen dates.
+  province, and registry coordinates (Hoja, Tomo…), plus first/last-seen dates, and a
+  **lifecycle status** (`ACTIVE` | `DISSOLVED` | `EXTINCT` | `MERGED`) updated whenever a
+  `DISOLUCION`, `EXTINCION`, `FUSION`, or `REAPERTURA` act is ingested.
 - **Person** — an individual playing a role (administrator, attorney, liquidator…).
   Carries raw and normalised name only.
 - **Address** — a registered domicile. Carries raw and normalised text, and where
