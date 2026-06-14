@@ -1,0 +1,32 @@
+# ---- Gradle ----
+.gradle/
+build/
+**/build/
+!src/**/build/
+gradle-app.setting
+.gradletasknamecache
+# Keep the wrapper jar tracked (do not ignore it)
+!gradle/wrapper/gradle-wrapper.jar
+
+# ---- IntelliJ IDEA ----
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# ---- VS Code ----
+.vscode/
+*.code-workspace
+
+# ---- Docs CI ----
+.lycheecache
+.mermaid/tmp/
+node_modules/
+
+# ---- Local tooling ----
+.claude/
+
+# ---- OS / misc ----
+.DS_Store
+Thumbs.db

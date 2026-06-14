@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Runs the local documentation CI pipeline before every push.
+# Enable in a fresh clone with:  git config core.hooksPath .githooks
+exec "$(git rev-parse --show-toplevel)/script/ci.sh"
