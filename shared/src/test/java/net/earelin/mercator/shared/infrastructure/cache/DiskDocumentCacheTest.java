@@ -2,8 +2,10 @@ package net.earelin.mercator.shared.infrastructure.cache;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.file.Files;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Optional;
@@ -26,6 +28,20 @@ class DiskDocumentCacheTest {
         assertEquals(Representation.TXT, read.get().representation());
         assertEquals(StandardCharsets.ISO_8859_1, read.get().charset());
         assertArrayEquals(body, read.get().body());
+    }
+
+    @Test
+    void shardsEntriesIntoFoldersByIdParts(@TempDir Path dir) {
+        DiskDocumentCache cache = new DiskDocumentCache(dir);
+        cache.put("BORME-A-2024-1-01",
+                new CachedDocument(Representation.XML, "x".getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8));
+
+        // All-but-last id parts become nested folders; the full id is the leaf filename.
+        Path leaf = dir.resolve("BORME").resolve("A").resolve("2024").resolve("1");
+        assertTrue(Files.isRegularFile(leaf.resolve("BORME-A-2024-1-01.body")));
+        assertTrue(Files.isRegularFile(leaf.resolve("BORME-A-2024-1-01.meta")));
+        // Not dumped flat in the cache root.
+        assertFalse(Files.exists(dir.resolve("BORME-A-2024-1-01.body")));
     }
 
     @Test
