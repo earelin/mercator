@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed (pending approval).
+Accepted.
 
 ## Context
 

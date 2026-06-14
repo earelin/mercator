@@ -20,10 +20,10 @@ Proposed**; only the maintainer marks one **Accepted**, and **Accepted ADRs are 
 | [0006](0006-hybrid-write-path.md) | Two write paths, both direct to the DB via the shared library | Accepted |
 | [0007](0007-single-source-of-truth-entity-resolution.md) | Single source of truth for entity resolution | Accepted |
 | [0008](0008-registry-coordinates-as-company-natural-key.md) | Registry coordinates (Hoja+province) as the company natural key | Proposed |
-| [0009](0009-probabilistic-person-resolution.md) | Probabilistic person resolution with confidence scores | Proposed |
-| [0010](0010-postgresql-ctes-over-graph-db.md) | PostgreSQL recursive CTEs over a graph database | Proposed |
-| [0011](0011-cheap-eu-vps-hosting.md) | Single cheap EU VPS for hosting | Proposed |
-| [0012](0012-reuse-bormeparser-dictionaries-gpl.md) | Reuse bormeparser dictionaries (GPL) | Proposed |
-| [0013](0013-api-key-auth-and-config.md) | API key authentication, configured per environment | Proposed |
-| [0014](0014-hexagonal-architecture.md) | Hexagonal architecture (ports and adapters) | Proposed |
-| [0015](0015-auto-apply-fe-de-erratas-corrections.md) | Auto-apply Fe de erratas corrections, with an audit trail | Proposed |
+| [0009](0009-probabilistic-person-resolution.md) | Probabilistic person resolution with confidence scores | Accepted |
+| [0010](0010-postgresql-ctes-over-graph-db.md) | PostgreSQL recursive CTEs over a graph database | Accepted |
+| [0011](0011-cheap-eu-vps-hosting.md) | Single cheap EU VPS for hosting | Accepted |
+| [0012](0012-reuse-bormeparser-dictionaries-gpl.md) | Reuse bormeparser dictionaries (GPL) | Accepted |
+| [0013](0013-api-key-auth-and-config.md) | API key authentication, configured per environment | Accepted |
+| [0014](0014-hexagonal-architecture.md) | Hexagonal architecture (ports and adapters) | Accepted |
+| [0015](0015-auto-apply-fe-de-erratas-corrections.md) | Auto-apply Fe de erratas corrections, with an audit trail | Accepted |
