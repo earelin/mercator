@@ -9,7 +9,7 @@ extract act-specific payloads — reusing bormeparser's domain dictionaries.
 ## Related specs / ADRs
 
 - Specs: [3 — Extraction](../specs/03-extraction.md)
-- ADRs: [0002 — Prefer structured text/XML over PDF](../architecture/0002-txt-php-over-pdf-parsing.md), [0012 — Reuse bormeparser dictionaries](../architecture/0012-reuse-bormeparser-dictionaries-gpl.md), [0015 — Auto-apply Fe de erratas](../architecture/0015-auto-apply-fe-de-erratas-corrections.md)
+- ADRs: [0002 — Prefer structured text/XML over PDF](../architecture/0002-structured-xml-over-pdf-parsing.md), [0012 — Reuse bormeparser dictionaries](../architecture/0012-reuse-bormeparser-dictionaries-gpl.md), [0015 — Auto-apply Fe de erratas](../architecture/0015-auto-apply-fe-de-erratas-corrections.md)
 
 ## Functional behaviour
 

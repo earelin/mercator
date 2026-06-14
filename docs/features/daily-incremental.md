@@ -8,7 +8,7 @@ BORME documents and persists them directly to PostgreSQL via the shared `Ingesti
 ## Related specs / ADRs
 
 - Specs: [2 — Ingestion](../specs/02-ingestion.md)
-- ADRs: [0005 — Three Java modules](../architecture/0005-java-ingester-and-read-api.md), [0006 — Write paths](../architecture/0006-hybrid-write-path.md)
+- ADRs: [0005 — Three Java modules](../architecture/0005-java-ingester-and-read-api.md), [0006 — Write paths](../architecture/0006-hybrid-write-path.md), [0017 — Observability & alerting](../architecture/0017-observability-logging-and-alerting.md)
 
 ## Functional behaviour
 
@@ -22,7 +22,13 @@ BORME documents and persists them directly to PostgreSQL via the shared `Ingesti
   normalise ([entity-extraction-normalisation](entity-extraction-normalisation.md)), resolve
   ([entity-resolution](entity-resolution.md)) and upsert — **in-process, directly to the DB**
   (no HTTP). Volume is a few dozen documents, so row-by-row is fine.
-- It logs outcomes and surfaces low-confidence person matches for review.
+- After processing the day's documents, it runs the **errata reconciliation pass** — re-attempting
+  `act_correction` rows still `UNAPPLIED` (a correction published before its target, or whose
+  target arrived in a later run) — identically to the backfill. Idempotent via the applied-marker
+  guard.
+- It logs outcomes, **records a last-success heartbeat** for staleness detection, and surfaces
+  low-confidence person matches for review
+  ([ADR-0017](../architecture/0017-observability-logging-and-alerting.md)).
 
 ## Data flow
 
@@ -60,5 +66,6 @@ flowchart TD
 - [ ] Micronaut `@Scheduled` daily job + concurrency/run guard.
 - [ ] Today+yesterday enumeration and `borme_log` diffing.
 - [ ] Wire the job to the shared `IngestionService` (in-process upsert).
-- [ ] Outcome logging + low-confidence-match alerting.
+- [ ] Errata reconciliation pass over `UNAPPLIED` corrections (shared with backfill).
+- [ ] Outcome logging + last-success heartbeat + low-confidence-match alerting ([ADR-0017](../architecture/0017-observability-logging-and-alerting.md)).
 - [ ] Operational runbook (what to do on persistent failures).

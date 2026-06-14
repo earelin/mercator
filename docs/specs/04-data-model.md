@@ -53,8 +53,12 @@ erDiagram
   ([ADR-0008](../architecture/0008-registry-coordinates-as-company-natural-key.md)).
 - **Persons** have **no identifier at all**. Person identity is therefore *probabilistic*:
   resolved by normalised name plus corroboration (co-occurrence in the same company or
-  registry). Person links are stored as **scored candidates**, never as hard facts
-  ([ADR-0009](../architecture/0009-probabilistic-person-resolution.md)).
+  registry), producing a **confidence score in `[0.0, 1.0]`** (1.0 = certain; below a
+  configurable floor, default ≈0.7, the match is withheld). Person links are stored as
+  **scored candidates**, never as hard facts
+  ([ADR-0009](../architecture/0009-probabilistic-person-resolution.md)). How these scores
+  compose into link confidence — and why it is kept separate from temporal recency — is
+  defined in [Spec 5 § Confidence](05-link-detection.md).
 - **Addresses** are identified by their **exact normalised text within a province**
   (`norm_text` + province). Identical addresses collapse to one row so companies sharing a
   domicile share one `address_id`; this is what makes the shared-address link a deterministic

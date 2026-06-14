@@ -13,18 +13,24 @@ read API; the ingestion worker can run locally.
 
 ## Decision
 
-Host on a **single EU virtual private server** in the ~€7/month class — e.g. a Hetzner
-CX32 (4 vCPU / 8 GB / 80 GB), located in Germany/Finland (OVH France is an alternative).
-Run PostgreSQL and the Java API on it (in Docker), with nightly `pg_dump` to object storage.
-Scale up to a larger instance only if measured load requires it.
+Host on a **single EU virtual private server** in the ~€7/month class — baseline a Hetzner
+**CX32** (4 vCPU / 8 GB / 80 GB), located in Germany/Finland (OVH France is an alternative).
+Run PostgreSQL and the Java API on it (in Docker), with nightly `pg_dump` shipped off-box for
+backup (see [ADR-0019](0019-backup-restore-and-retention.md) for the backup target,
+encryption and retention). Resize only if measured load requires it.
 
 ## Consequences
 
 - Very low running cost; EU residency simplifies GDPR.
 - A single host is a single point of failure — mitigated by nightly off-host backups and the
   fact that the authoritative source (the BOE) can always be re-ingested.
-- Headroom for `pg_trgm` GIN indexes and the bulk load; CX22 is sufficient for a lean
-  API+DB, CX42 if growth demands.
+- CX32's 8 GB gives headroom for `pg_trgm` GIN indexes plus the JVM alongside PostgreSQL.
+  Sizing band: a smaller **CX22** (4 GB) may suffice for a lean steady-state API+DB *if* the
+  footprint proves small, **CX42** if growth demands — but CX32 is the chosen baseline so the
+  bulk load and indexing have room.
+- The off-box backup target is **cold object storage, not a second live datastore** — it does
+  not contradict the single-PostgreSQL-datastore decision ([ADR-0004](0004-postgresql-as-primary-datastore.md));
+  details in [ADR-0019](0019-backup-restore-and-retention.md).
 - VPS pricing changes over time — confirm current rates at order time.
 
 ## Alternatives considered

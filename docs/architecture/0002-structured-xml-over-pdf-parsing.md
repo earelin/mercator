@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted. *(Updated 2026 with the per-document XML finding below — see Context.)*
+Accepted. *(Updated 2026, under the pre-implementation in-place-edit exception: the decision
+was revised from `txt.php`-first to **per-document XML**-first once the `url_xml` source was
+confirmed working back to 2009; the file was renamed from `0002-txt-php-over-pdf-parsing.md` to
+match. See Context, and `docs/CLAUDE.md` → ADR lifecycle.)*
 
 ## Context
 

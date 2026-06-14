@@ -13,7 +13,7 @@ consumers, which must be hosted and stable. In addition the data must be kept cu
 **daily incremental** ingest.
 
 An earlier draft put the parsing worker in **Python**; on inspection the work is regex over
-structured XML ([ADR-0002](0002-txt-php-over-pdf-parsing.md)) plus dictionaries — not ML/NLP
+structured XML ([ADR-0002](0002-structured-xml-over-pdf-parsing.md)) plus dictionaries — not ML/NLP
 — and the hard fuzzy matching lives in **PostgreSQL** and shared DB functions
 ([ADR-0007](0007-single-source-of-truth-entity-resolution.md)), independent of the worker's
 language. The operator is Java-centric and values a single stack. Both the daily incremental

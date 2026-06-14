@@ -28,7 +28,7 @@ XML or JSON form. Do not build against the legacy `xml.php` summary.
 > **Correction (verified 2026):** an earlier version of this consequence claimed Sección A
 > items expose only `url_pdf`. In fact every summary item (A, B and C) exposes `url_pdf`,
 > `url_xml` and `url_html`, back to 2009. Per-document XML is the chosen ingestion source —
-> see [ADR-0002](0002-txt-php-over-pdf-parsing.md). This ADR's decision (use the documented
+> see [ADR-0002](0002-structured-xml-over-pdf-parsing.md). This ADR's decision (use the documented
 > REST API for the *summary*) is unaffected.
 
 - If we ever need the legacy endpoint, we must first confirm its tag casing against a live
@@ -37,5 +37,9 @@ XML or JSON form. Do not build against the legacy `xml.php` summary.
 ## Alternatives considered
 
 - **Legacy `xml.php`** — undocumented tag schema, higher risk of silent breakage; rejected
-  except as a contingency.
+  except as a contingency. **Scope note:** what is rejected here is the *summary* endpoint
+  `xml.php?id=BORME-S-YYYYMMDD`. This is **not** the per-document
+  `xml.php?id=BORME-A-…` that [ADR-0002](0002-structured-xml-over-pdf-parsing.md) makes the
+  primary *document* source — same script name, different role (daily summary vs. one Sección A
+  document), opposite verdicts.
 - **Scraping the HTML summary pages** — brittle; rejected.

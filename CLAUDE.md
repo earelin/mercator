@@ -84,8 +84,11 @@ These are the load-bearing decisions; preserve them unless a new ADR supersedes 
 - **Persons are probabilistic.** No identifier exists for people; person-derived links are
   **scored candidates with confidence**, never presented as facts. (ADR-0009)
 - **Idempotency at two layers:** app-level `borme_log` short-circuit + DB-level
-  `UNIQUE (borme_id, company_id, act_type, datos_registrales)` with `ON CONFLICT DO NOTHING`.
-  Re-processing any document must be a no-op. (ADR-0006)
+  `UNIQUE (borme_id, company_id, act_type, datos_registrales, doc_seq)` with `ON CONFLICT DO
+  NOTHING` (`doc_seq` = the act block's deterministic ordinal within its document, so two
+  legitimately distinct same-type acts sharing one `datos_registrales` don't collide while
+  re-processing the same document stays a no-op). Re-processing any document must be a no-op.
+  (ADR-0006)
 - **Bounded link queries in pure SQL** (indexed joins + recursive CTEs with path-array cycle
   detection). Apache AGE is an escalation only if a query needs >3 unbounded hops or blows
   `work_mem` — do not add it preemptively. (ADR-0010)

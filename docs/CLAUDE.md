@@ -30,8 +30,15 @@ reintroduce `[MVP]`/tier distinctions in specs or features.
   maintainer (the user) marks an ADR **Accepted**.
 - A **Proposed** ADR may be **freely updated in place** — refine the context, change the
   decision, fold in new findings. No superseding ADR is needed while it is Proposed.
-- An **Accepted** ADR is **immutable** — change it only by writing a new ADR that supersedes
-  it, updating the old one's status to point at the replacement.
+- **Pre-implementation exception (current phase).** While the repository contains *no source
+  code* (docs only), **Accepted ADRs may still be edited in place** to fix contradictions,
+  stale cross-references or naming — note the change in the `## Status` line. Immutability is
+  deliberately relaxed because nothing is built against these decisions yet. **Once the first
+  code lands, this exception ends:** Accepted ADRs become immutable and change only via a new
+  superseding ADR. (See the matching note in `architecture/README.md`.)
+- After the pre-implementation phase, an **Accepted** ADR is **immutable** — change it only by
+  writing a new ADR that supersedes it, updating the old one's status to point at the
+  replacement.
 - Prefer updating the existing Proposed ADR when refining the *same* decision; create a new
   Proposed ADR for a genuinely *new* decision.
 - Keep each ADR's `## Status` line and the status column in `architecture/README.md` in sync.

@@ -65,12 +65,16 @@ flowchart LR
 ## Edge cases
 
 - **Target not found** — correction references a pre-2009, un-parsed, or not-yet-merged
-  publication: store unapplied/flagged; reapply on a later pass.
+  publication: store `UNAPPLIED`/flagged and retry it on the **errata reconciliation pass** that
+  runs after each backfill span and after each daily run (see
+  [historical-backfill](historical-backfill.md), [daily-incremental](daily-incremental.md)) — so
+  a target that arrives out of order is picked up without re-crawling.
 - **Ambiguous prose** — the before→after cannot be cleanly extracted: do not guess; flag.
 - **Person-name correction** — re-resolution may merge a spurious person into the right one or
   split one apart; confidence is recomputed.
-- **Re-processing / ordering** — errata published after the original (forward iteration finds
-  the target); re-applying the same errata is a no-op.
+- **Re-processing / ordering** — corrections are applied in a dedicated pass **after** the act
+  merge, never inline, so the target is present regardless of intra-/cross-batch ordering;
+  re-applying the same errata is a no-op (applied-marker guard).
 - **Suppression** — a corrected row still honours any suppression flag; corrections never
   resurface suppressed DNI/NIE ([Spec 7](../specs/07-data-protection.md)).
 

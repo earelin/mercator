@@ -9,7 +9,7 @@ no write coupling.
 ## Related specs / ADRs
 
 - Specs: [5 — Link detection](../specs/05-link-detection.md)
-- ADRs: [0009 — Probabilistic resolution](../architecture/0009-probabilistic-person-resolution.md), [0008 — Registry coordinates as key](../architecture/0008-registry-coordinates-as-company-natural-key.md)
+- ADRs: [0009 — Probabilistic resolution](../architecture/0009-probabilistic-person-resolution.md), [0008 — Registry coordinates as key](../architecture/0008-registry-coordinates-as-company-natural-key.md), [0013 — API key auth](../architecture/0013-api-key-auth-and-config.md)
 
 ## Functional behaviour
 
@@ -22,8 +22,13 @@ no write coupling.
 - Because contracts data has **NIFs** but the BORME does **not**, the join cannot be on NIF.
   Mercator clusters companies and contract awardees by normalised name and presents **ranked
   candidate matches** with scores.
-- Matches live in a dedicated **`match_candidate`** layer (with scores), keeping the two
-  projects loosely coupled — no write coupling in either direction.
+- Matches live in a dedicated **`match_candidate`** table (with scores), keeping the two
+  projects loosely coupled. It is written **only by a Mercator-internal batch matcher** (a
+  derived/materialised table — see [database-schema](database-schema.md)), **not** by the
+  contracts project and **not** over HTTP; the contracts project only **reads** it. This is a
+  derived table, so it is outside the "two write paths" *ingestion* invariant
+  ([ADR-0006](../architecture/0006-hybrid-write-path.md)) — there is still no write coupling
+  between the two projects.
 
 ## Data flow
 
@@ -56,6 +61,8 @@ flowchart LR
 ## Implementation issues
 
 - [ ] `match_candidate` table + scoring schema.
+- [ ] Internal batch matcher + its refresh trigger (e.g. after each daily incremental, or on
+      demand) — defines when candidates are (re)computed; the contracts project never pushes.
 - [ ] Shared normaliser exposed/usable from the matcher (parity with ingestion).
 - [ ] Name+province trigram matcher producing ranked candidates.
 - [ ] Read-only access path for the contracts project (API or read replica).

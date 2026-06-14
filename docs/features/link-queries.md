@@ -30,12 +30,17 @@ multi-hop connections — implemented as indexed joins and recursive CTEs inside
   across non-overlapping intervals — they were connected at different times). The result
   reports this `temporal` flag explicitly so consumers never mistake a past coincidence for a
   live connection.
-- **Confidence propagation** — any link routed through a person is a **scored candidate**,
-  not a fact ([ADR-0009](../architecture/0009-probabilistic-person-resolution.md)); the
-  result carries the aggregated confidence. **A historical (non-overlapping) match lowers
-  the reported confidence** relative to an otherwise-identical current/overlapping match —
-  weaker evidence of an active relationship — and this penalty applies to both
-  person-derived links *and* the otherwise-deterministic shared-address link.
+- **Confidence propagation** — two orthogonal dimensions per the model in
+  [Spec 5 § Confidence](../specs/05-link-detection.md):
+  - **Identity confidence** ∈ [0,1]. Deterministic hops (company by Hoja+province, shared
+    address by exact key) contribute `1.0`; person hops contribute the person's resolution
+    confidence ([ADR-0009](../architecture/0009-probabilistic-person-resolution.md)). A path's
+    identity confidence is the **product of its per-hop confidences**; links below a
+    configurable floor (default ≈0.7) are withheld.
+  - **Temporal relevance** — a separate `temporal` flag (current/overlapping vs. historical)
+    plus an optional **recency weight**. A historical match lowers the *recency weight*, **not**
+    the identity confidence — so the deterministic shared-address link keeps `confidence = 1.0`
+    even when historical. Identity certainty and recency are reported as distinct fields.
 
 ## Data flow
 
@@ -48,7 +53,8 @@ flowchart LR
 
 - **Input:** a company or person id, optional hop limit / date filter.
 - **Output:** linked companies/people with link type, period, a **temporal flag**
-  (current/overlapping vs. historical) and confidence (reduced for historical matches).
+  (current/overlapping vs. historical) with an optional recency weight, and an **identity
+  confidence** ∈ [0,1] (independent of the temporal flag; `1.0` for deterministic links).
 
 ## Edge cases
 
@@ -61,8 +67,9 @@ flowchart LR
 ## Acceptance criteria
 
 - Shared-admin and shared-address queries return correct, deduplicated links with periods.
-- Each shared-admin/shared-address link is tagged current/overlapping vs. historical, and a
-  historical match reports lower confidence than an equivalent current one.
+- Each shared-admin/shared-address link is tagged current/overlapping vs. historical; the
+  temporal flag and the identity confidence are reported as **separate** fields (a historical
+  deterministic link keeps identity confidence `1.0`).
 - Multi-hop traversal terminates with cycle detection and respects the hop limit.
 - Person-derived links carry confidence and are never labelled as certain.
 
@@ -73,6 +80,7 @@ flowchart LR
 - [ ] Bounded multi-hop recursive CTE with path-array cycle detection.
 - [ ] Temporal classification (current/overlapping vs. historical) tagged on shared-admin
       and shared-address links.
-- [ ] Confidence aggregation across a path, including the historical-match penalty.
+- [ ] Identity-confidence aggregation across a path (product of per-hop scores), kept separate
+      from the temporal flag + recency weight.
 - [ ] Query performance benchmarks + the AGE escalation decision gate.
 - [ ] API endpoints exposing the above (with [read-api](read-api.md)).

@@ -9,7 +9,7 @@ backups.
 ## Related specs / ADRs
 
 - Specs: [8 — Non-functional requirements](../specs/08-non-functional.md)
-- ADRs: [0011 — Cheap EU VPS hosting](../architecture/0011-cheap-eu-vps-hosting.md), [0005 — Three Java modules](../architecture/0005-java-ingester-and-read-api.md)
+- ADRs: [0011 — Cheap EU VPS hosting](../architecture/0011-cheap-eu-vps-hosting.md), [0005 — Three Java modules](../architecture/0005-java-ingester-and-read-api.md), [0013 — API key auth & config](../architecture/0013-api-key-auth-and-config.md), [0016 — Schema migrations](../architecture/0016-database-schema-migrations.md), [0017 — Observability & alerting](../architecture/0017-observability-logging-and-alerting.md), [0019 — Backup, restore & retention](../architecture/0019-backup-restore-and-retention.md), [0020 — Secrets management](../architecture/0020-secrets-management.md)
 
 ## Functional behaviour
 
@@ -20,19 +20,25 @@ backups.
 - **Configuration:** environment-driven / 12-factor (DB connection, BOE rate limits,
   daily-schedule cron expression, cache location, **API keys**), via env vars + Micronaut
   environments (`dev`/`prod`). The same image runs everywhere; **secrets (API keys, DB
-  password) are injected at run time** (Docker/K8s secret or cloud secret manager), never
-  committed or baked into the image ([ADR-0013](../architecture/0013-api-key-auth-and-config.md)).
+  password, backup-storage credentials) are injected at run time** from a root-owned, gitignored
+  `.env` (chmod 600) consumed by Compose — never committed or baked into the image
+  ([ADR-0013](../architecture/0013-api-key-auth-and-config.md),
+  [ADR-0020](../architecture/0020-secrets-management.md)).
 - **Scheduling:** the daily incremental is a **Micronaut `@Scheduled`** job inside the server
   ([daily-incremental](daily-incremental.md)) — no external cron/systemd timer. The historical
   backfill is run on demand from the `ingester`, locally, over several days.
-- **Backups:** nightly `pg_dump` to object storage; the BOE is always re-ingestable as a
-  disaster fallback.
-- **Network:** the server exposes only the **read-only** API, which in production requires an
-  **API key** (`X-API-Key`); there is no ingest endpoint to isolate. Health/readiness probes
-  are unauthenticated.
-- **Reproducibility:** `docker-compose` for the server stack (PostgreSQL + server); osbex's
-  compose is a template, minus Elasticsearch. The build is a **Gradle 9.5 multi-project**
-  (`shared`, `server`, `ingester`).
+- **Backups:** nightly **encrypted** `pg_dump` shipped to **EU cold object storage**, with a
+  **rehearsed restore** and a retention window ([ADR-0019](../architecture/0019-backup-restore-and-retention.md));
+  the BOE is a slower last-resort fallback (a full re-crawl is multi-day under the rate limit).
+- **Network:** the server exposes only the **read-only** API behind TLS (reverse proxy /
+  Let's Encrypt), which in production requires an **API key** (`X-API-Key`); there is no ingest
+  endpoint to isolate. Only the liveness/readiness probe paths are unauthenticated, and they
+  expose just up/down.
+- **Reproducibility:** a project-authored `docker-compose` brings up the server stack —
+  **PostgreSQL 18 + the Micronaut server only**; there is **no second datastore** (no
+  Elasticsearch/search engine — PostgreSQL `pg_trgm` covers fuzzy search, per
+  [ADR-0004](../architecture/0004-postgresql-as-primary-datastore.md)). The build is a
+  **Gradle 9.5 multi-project** (`shared`, `server`, `ingester`).
 
 ## Data flow
 
@@ -56,9 +62,16 @@ flowchart LR
 - **Disk growth** — monitor; corpus is tens of GB, but caches grow; size disk/volume with
   headroom.
 - **Price/region changes** — confirm VPS rates/region at order time; keep data in the EU.
-- **Migration runs** — schema migrations applied on deploy ([database-schema](database-schema.md)).
+- **Migration runs** — Flyway migrations applied on deploy
+  ([ADR-0016](../architecture/0016-database-schema-migrations.md), [database-schema](database-schema.md)).
+  On a single node there is **no blue/green**, so migrations are **forward-only and
+  backward-compatible**, and a known-good backup is taken **before** each deploy as the rollback
+  path ([ADR-0019](../architecture/0019-backup-restore-and-retention.md)).
 - **Scheduler on redeploy** — ensure the daily job does not double-run across a rolling
   restart (run guard / single instance).
+- **Silent job failure** — the nightly incremental could stop unnoticed; a last-success
+  heartbeat + dead-man's-switch alert covers it
+  ([ADR-0017](../architecture/0017-observability-logging-and-alerting.md)).
 
 ## Acceptance criteria
 
@@ -75,7 +88,8 @@ flowchart LR
       Micronaut environment; verify auth is on by default.
 - [ ] `docker-compose` for PostgreSQL 18 + server with extensions enabled.
 - [ ] Environment-based configuration for all components.
-- [ ] Schema-migration step wired into deploy.
+- [ ] Flyway migration step wired into deploy (forward-only; pre-deploy backup as rollback).
 - [ ] Micronaut `@Scheduled` daily job config (cron expression, run guard).
-- [ ] Nightly `pg_dump` to object storage + documented restore.
-- [ ] Basic monitoring/alerting (disk, job success, API health).
+- [ ] Nightly **encrypted** `pg_dump` to EU object storage + **rehearsed** restore + retention.
+- [ ] Reverse proxy + TLS (Let's Encrypt) in front of the read API.
+- [ ] Monitoring/alerting: disk, daily-job heartbeat/dead-man's-switch, API health ([ADR-0017](../architecture/0017-observability-logging-and-alerting.md)).

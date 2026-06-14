@@ -2,7 +2,7 @@
 
 **Realised by:** [act-parsing](../features/act-parsing.md),
 [entity-extraction-normalisation](../features/entity-extraction-normalisation.md).
-**Constrained by:** [ADR-0002](../architecture/0002-txt-php-over-pdf-parsing.md),
+**Constrained by:** [ADR-0002](../architecture/0002-structured-xml-over-pdf-parsing.md),
 [ADR-0012](../architecture/0012-reuse-bormeparser-dictionaries-gpl.md).
 
 ## What this describes

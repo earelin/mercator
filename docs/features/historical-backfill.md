@@ -8,7 +8,7 @@ acts into staging and merges them into the live model via the shared resolution 
 ## Related specs / ADRs
 
 - Specs: [2 — Ingestion](../specs/02-ingestion.md)
-- ADRs: [0006 — Hybrid write path](../architecture/0006-hybrid-write-path.md)
+- ADRs: [0006 — Hybrid write path](../architecture/0006-hybrid-write-path.md), [0018 — BOE source politeness & retry](../architecture/0018-boe-source-politeness-and-retry.md)
 
 ## Functional behaviour
 
@@ -22,10 +22,20 @@ acts into staging and merges them into the live model via the shared resolution 
   ([act-parsing](act-parsing.md)), normalise
   ([entity-extraction-normalisation](entity-extraction-normalisation.md)), and bulk-`COPY`
   rows into `staging_act`.
-- Run a **merge step**: for each unprocessed staging row, call `resolve_company`/
-  `resolve_person` ([entity-resolution](entity-resolution.md)) and upsert into the live
-  tables with `ON CONFLICT DO NOTHING`; mark the row `processed`; write `borme_log`.
+- Run a **merge step** through the shared `IngestionService`'s bulk-merge entry point (the
+  *same* resolution logic the daily path uses, [entity-resolution](entity-resolution.md), just
+  driven set-at-a-time): for each unprocessed staging row it invokes `resolve_company`/
+  `resolve_person`/`resolve_address` and upserts into the live tables with `ON CONFLICT DO
+  NOTHING`; marks the row `processed`; writes `borme_log`. The backfill does **not** define its
+  own resolution — it calls `shared`, exactly like the daily incremental.
 - **Batch** the merge in chunks (e.g. 5–10k rows) to bound transaction size.
+- **Errata reconciliation pass (ordering).** Because a *Fe de erratas* can only be applied once
+  its target act is in the live tables, corrections are **not** applied inline during the main
+  merge. After the act merge of a span completes, a dedicated pass re-attempts every
+  `act_correction` with `status = UNAPPLIED` (their targets may now be present); matches are
+  applied, the rest stay `UNAPPLIED` for the next pass. The pass is idempotent (applied-marker
+  guard) and re-runs safely on resume, so cross-batch or out-of-order publication never loses a
+  correction. See [errata-corrections](errata-corrections.md).
 - **Resumable** via `borme_log` (skip already-MERGED documents); **idempotent** via the
   `borme_act` UNIQUE constraint. **Rate-limited** (≤1–2 req/s), runnable over several days.
 - Runs **locally/off-server** ([ADR-0005](../architecture/0005-java-ingester-and-read-api.md)),
@@ -66,7 +76,8 @@ flowchart LR
 - [ ] CLI date-range parameters: explicit start/end dates + `--month YYYY-MM` shorthand for
       single-month test runs (default = full 2009→today range).
 - [ ] `COPY`-based bulk loader into `staging_act`.
-- [ ] Merge step calling resolution functions + chunked upserts + `borme_log` updates.
+- [ ] Merge step via shared `IngestionService` bulk entry point + chunked upserts + `borme_log` updates.
+- [ ] Post-merge errata reconciliation pass over `UNAPPLIED` `act_correction` rows (idempotent).
 - [ ] Resume logic from `borme_log`; per-document error isolation + retry.
 - [ ] Rate-limit/backoff config shared with document-fetch.
 - [ ] Progress/metrics reporting for long runs.

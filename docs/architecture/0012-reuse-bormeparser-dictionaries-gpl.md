@@ -21,8 +21,9 @@ makes its underlying parser the most attractive prior art to port.
 ## Decision
 
 **Reuse bormeparser's regex and act/role/province dictionaries** rather than rebuilding this
-domain knowledge from scratch, driving them from `txt.php` text
-([ADR-0002](0002-txt-php-over-pdf-parsing.md)) instead of PDF cropping. Because bormeparser
+domain knowledge from scratch, driving them from the **per-document XML text body**
+(the `<p class="parrafo">` prose; [ADR-0002](0002-structured-xml-over-pdf-parsing.md)) instead
+of PDF cropping. Because bormeparser
 is GPLv3 and Mercator is GPLv3, the derived parser stays GPL-compatible. If a different
 license were ever required, the dictionary tables would be reimplemented cleanly instead.
 

@@ -2,7 +2,7 @@
 
 **Realised by:** [summary-enumeration](../features/summary-enumeration.md),
 [document-fetch](../features/document-fetch.md).
-**Constrained by:** [ADR-0002](../architecture/0002-txt-php-over-pdf-parsing.md),
+**Constrained by:** [ADR-0002](../architecture/0002-structured-xml-over-pdf-parsing.md),
 [ADR-0003](../architecture/0003-datosabiertos-rest-api-over-legacy-xml.md).
 
 ## What this describes
@@ -48,7 +48,7 @@ exposes **three** representations:
   A and B**, back to 2009. Returns a clean `<documento>` with `<metadatos>` and a `<texto>`
   body segmented into `<p class="articulo">` (company header line) and `<p class="parrafo">`
   (act text). This is Mercator's **primary ingestion format** (see
-  [ADR-0002](../architecture/0002-txt-php-over-pdf-parsing.md)).
+  [ADR-0002](../architecture/0002-structured-xml-over-pdf-parsing.md)).
 - **HTML / plain text** (`url_html` → `txt.php?id=…`) — a full HTML page (site chrome +
   metadata header + the same text body). Usable as a fallback, but requires stripping HTML
   chrome that the XML avoids.

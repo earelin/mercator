@@ -20,14 +20,21 @@ by the `shared` library's `IngestionService`; the `ingester` backfill merge and 
 scheduled daily job both call them — **one definition, both callers**.
 
 - **`resolve_company`** — match on the natural key `(reg_hoja, province_code)` first (exact,
-  high confidence). If no Hoja, fall back to normalised-name + province with a high trigram
-  threshold, flagged as lower confidence. Get-or-create; update `last_seen`.
+  confidence `1.0`). **A missing/garbled Hoja never silently name-merges** — that would violate
+  the natural-key invariant ([ADR-0008](../architecture/0008-registry-coordinates-as-company-natural-key.md),
+  where name matching is for search/cross-source only, never company identity). Instead, when
+  no Hoja resolves, **create-and-flag** a new company row (low confidence) and record any
+  high-similarity normalised-name + province match as a **review candidate** (stored, *not*
+  applied) for later manual or Hoja-backed reconciliation. Get-or-create; update `last_seen`.
 - **`resolve_person`** — layered: (1) exact normalised-name match; (2) `pg_trgm` trigram
   similarity (GIN-indexed, threshold ≈0.7+); (3) Jaro-Winkler/Levenshtein
   (`fuzzystrmatch`) for short names where one character matters. Corroborate with
-  co-occurrence in the same company/registry. Return a **confidence score**; never hard-merge
+  co-occurrence in the same company/registry. Return a **confidence score in `[0.0, 1.0]`**
+  (the floor below which a match is withheld is configurable, default ≈0.7); never hard-merge
   ambiguous persons — surface as candidates
-  ([ADR-0009](../architecture/0009-probabilistic-person-resolution.md)).
+  ([ADR-0009](../architecture/0009-probabilistic-person-resolution.md)). How this score feeds
+  link confidence — and stays separate from temporal recency — is defined in
+  [Spec 5 § Confidence](../specs/05-link-detection.md).
 - **`resolve_address`** — deterministic get-or-create on the natural key
   `(norm_text, province_code)`: identical normalised addresses collapse to a single
   `address_id`, so the shared-registered-address link ([link-queries](link-queries.md)) is a

@@ -8,7 +8,7 @@ Accepted.
 
 Mercator has several distinct I/O concerns around a small but meaningful domain (companies,
 people, acts, addresses and the links between them): it fetches BORME documents over HTTP
-with an XML→`txt.php`→PDF fallback ([ADR-0002](0002-txt-php-over-pdf-parsing.md)), parses and
+with an XML→`txt.php`→PDF fallback ([ADR-0002](0002-structured-xml-over-pdf-parsing.md)), parses and
 normalises free Spanish prose, persists through PostgreSQL with DB-side entity resolution
 ([ADR-0007](0007-single-source-of-truth-entity-resolution.md)), serves a read-only HTTP API,
 and runs both a daily incremental and an offline backfill ([ADR-0006](0006-hybrid-write-path.md)).
