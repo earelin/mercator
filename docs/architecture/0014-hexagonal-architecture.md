@@ -15,15 +15,21 @@ and runs both a daily incremental and an offline backfill ([ADR-0006](0006-hybri
 The same fetch/parse/normalise/persist logic is shared between `server` and `ingester`
 ([ADR-0005](0005-java-ingester-and-read-api.md)).
 
-We want the **domain and application logic to be independent of those I/O details** — so it
-is testable without a database or network, so the BORME source and the format-fallback can
-evolve behind a stable contract, and so the framework (Micronaut) is a deployment detail
-rather than something the core depends on. We also want the link-query implementation to be
-swappable should it ever escalate to Apache AGE ([ADR-0010](0010-postgresql-ctes-over-graph-db.md)).
+The goals, in order, are **clear isolation between layers so the code is easy to understand
+and debug**, and **testability** — the domain/application logic should be exercisable without
+a database or network. Where business logic lives, where I/O lives, and what crosses the
+boundary should be obvious from the structure, so a failure can be localised quickly and the
+core can be unit-tested at its ports. Keeping the core independent of I/O details (database,
+network, Micronaut) follows from that, and brings a further benefit — an I/O choice can change
+behind its boundary (e.g. the link-query implementation escalating to Apache AGE,
+[ADR-0010](0010-postgresql-ctes-over-graph-db.md)). But **isolation, debuggability and
+testability are the drivers, not architectural purity**.
 
 ## Decision
 
-Adopt **hexagonal architecture (ports and adapters)** across the Java modules.
+Adopt **hexagonal architecture (ports and adapters)** across the Java modules, applied
+**pragmatically** — the unit of the pattern is the *layer boundary*, not the individual class.
+The aim is that anyone reading the code can tell business logic from I/O at a glance.
 
 - **Domain core** (in `shared`) — the model and the use-case/application services
   (parsing, normalisation, the `IngestionService`). It depends on **nothing** outward: no
@@ -53,13 +59,18 @@ driven adapter* because Postgres-native fuzzy matching and a single source of tr
 load-bearing invariants that outrank hexagonal purity here. The core still defines and
 depends only on the port; it never embeds SQL.
 
-**Pragmatic scope.** Apply the pattern where a real boundary exists (BORME source,
+**Pragmatic scope.** Define a port only where a real layer boundary is crossed (BORME source,
 persistence/resolution, link queries, the inbound API/jobs). Do **not** manufacture ports for
-internal helpers or wrap trivial value objects — that is ceremony, not isolation. The goal is
-testable, swappable edges, not maximal indirection on a small codebase.
+internal helpers, wrap trivial value objects, or add indirection that does not separate a
+genuine layer — that is ceremony, and it *hurts* readability rather than helping. When a port
+would make the code harder to follow than a direct call, prefer the direct call. The test for
+any abstraction here is simple: *does it make the layers clearer, the system easier to debug,
+or the core easier to test?* If none of those, leave it out.
 
 ## Consequences
 
+- **Layers are visibly separated**, so a reader can tell business logic from I/O at a glance
+  and a failure can be localised to a layer quickly — the primary payoff.
 - The domain core is **unit-testable with no database or network** — adapters are mocked at
   the ports; integration tests exercise the real PostgreSQL/HTTP adapters.
 - I/O details **swap behind ports**: the XML→txt→PDF fallback lives inside the `BormeGateway`
