@@ -51,6 +51,30 @@ class DiskDocumentCacheTest {
     }
 
     @Test
+    void truncated_meta_is_treated_as_a_miss(@TempDir Path dir) throws Exception {
+        DiskDocumentCache cache = new DiskDocumentCache(dir);
+        cache.put("BORME-A-2024-1-01",
+                new CachedDocument(Representation.XML, "x".getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8));
+
+        Path meta = dir.resolve("BORME").resolve("A").resolve("2024").resolve("1").resolve("BORME-A-2024-1-01.meta");
+        Files.writeString(meta, "XML\n"); // charset line missing
+
+        assertTrue(cache.get("BORME-A-2024-1-01").isEmpty());
+    }
+
+    @Test
+    void unparseable_meta_is_treated_as_a_miss(@TempDir Path dir) throws Exception {
+        DiskDocumentCache cache = new DiskDocumentCache(dir);
+        cache.put("BORME-A-2024-1-01",
+                new CachedDocument(Representation.XML, "x".getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8));
+
+        Path meta = dir.resolve("BORME").resolve("A").resolve("2024").resolve("1").resolve("BORME-A-2024-1-01.meta");
+        Files.writeString(meta, "NOT_A_REPRESENTATION\nUTF-8\n");
+
+        assertTrue(cache.get("BORME-A-2024-1-01").isEmpty());
+    }
+
+    @Test
     void put_overwrites_existing_entry(@TempDir Path dir) {
         DiskDocumentCache cache = new DiskDocumentCache(dir);
         cache.put("id", new CachedDocument(Representation.XML, "v1".getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8));

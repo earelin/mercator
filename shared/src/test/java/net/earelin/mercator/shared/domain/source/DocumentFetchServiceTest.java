@@ -1,5 +1,6 @@
 package net.earelin.mercator.shared.domain.source;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -63,6 +64,24 @@ class DocumentFetchServiceTest {
         assertEquals(Representation.XML, doc.representation());
         assertEquals(0, http.calls, "cache hit must not touch the network");
         assertTrue(bormeLog.entries.isEmpty(), "cache hit should not re-record borme_log");
+    }
+
+    @Test
+    void corrupt_cache_entry_is_ignored_and_refetched() {
+        // A cached XML body that no longer parses must not poison the result: fall through to a
+        // fresh fetch rather than failing.
+        cache.put("BORME-A-2024-1-01",
+                new CachedDocument(Representation.XML, "<malformed".getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8));
+        FakeHttpClient http = new FakeHttpClient(Map.of(URL_XML, success(XML_BODY)));
+
+        DocumentFetchService service = service(http, html(Optional.empty()), pdf(Optional.empty()));
+        FetchOutcome outcome = service.fetch(DESCRIPTOR, CONTEXT);
+
+        FetchedDocument doc = assertFetched(outcome);
+        assertEquals(Representation.XML, doc.representation());
+        assertEquals(1, http.calls, "corrupt cache entry must trigger a re-fetch");
+        // The good body replaces the corrupt one in the cache.
+        assertArrayEquals(XML_BODY, cache.store.get("BORME-A-2024-1-01").body());
     }
 
     @Test

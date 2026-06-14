@@ -150,6 +150,9 @@ public final class DocumentFetchService implements DocumentSource {
                                 bormeId, Representation.XML, parsed.charset(), parsed.rawBody(),
                                 parsed.metadata(), parsed.paragraphs()));
             }
+            // For TXT/PDF the body is already decoded text; the charset is nominal (UTF_8) and not
+            // load-bearing — a cache re-materialisation re-runs jsoup/PDFBox on the raw bytes and
+            // re-detects the real charset. Only the XML representation's charset is meaningful.
             case TXT -> htmlExtractor.extractText(body).map(text -> new FetchedDocument(
                     bormeId, Representation.TXT, StandardCharsets.UTF_8, text, null, List.of()));
             case PDF -> pdfExtractor.extractText(body).map(text -> new FetchedDocument(
