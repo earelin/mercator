@@ -17,3 +17,9 @@ CREATE TABLE act_correction (
     flag_reason        TEXT,
     CONSTRAINT pk_act_correction PRIMARY KEY (id)
 );
+
+CREATE INDEX idx_act_correction_errata_act_id     ON act_correction (errata_act_id);
+CREATE INDEX idx_act_correction_target_company_id ON act_correction (target_company_id);
+-- Partial: target_act_id is NULL until matched; only index non-NULL rows.
+CREATE INDEX idx_act_correction_target_act_id     ON act_correction (target_act_id)
+    WHERE target_act_id IS NOT NULL;

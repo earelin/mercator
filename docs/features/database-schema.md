@@ -132,4 +132,5 @@ flowchart LR
 - [x] Temporal-interval handling (close previous `valid_to` on new event/address).
 - [x] Idempotency constraints (incl. `doc_seq` discriminator) + `ON CONFLICT DO NOTHING` patterns.
 - [x] Migration tooling/runner (Flyway) wired into deployment ([ADR-0016](../architecture/0016-database-schema-migrations.md)).
-- [x] Seed/reference data (province codes, role enum).
+- [x] Seed/reference data (province codes).
+- [ ] Role enum: `appointment.role` constraint/seed table (deferred — BORME role vocabulary needs bormeparser dictionary port first).

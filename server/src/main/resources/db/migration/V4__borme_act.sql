@@ -22,3 +22,5 @@ CREATE TABLE borme_act (
 CREATE UNIQUE INDEX uq_borme_act_idempotency
     ON borme_act (borme_id, company_id, act_type,
                   COALESCE(datos_registrales, ''), doc_seq);
+
+CREATE INDEX idx_borme_act_company_id ON borme_act (company_id);
