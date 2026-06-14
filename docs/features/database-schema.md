@@ -19,7 +19,10 @@ Live tables (conceptual columns; see [Spec 4](../specs/04-data-model.md)):
 
 - **company** — `raw_name`, `norm_name`, `legal_form`, `province_code`, `reg_hoja`,
   `reg_tomo`, `first_seen`, `last_seen`, `name_match_flag` (set when created without a Hoja —
-  see resolution policy below), `suppressed` (boolean, default false);
+  see resolution policy below), `suppressed` (boolean, default false),
+  **`status`** (`ACTIVE` | `DISSOLVED` | `EXTINCT` | `MERGED`, default `ACTIVE` — updated by
+  `DISOLUCION`, `EXTINCION`, `FUSION`, and `REAPERTURA` acts; `REAPERTURA` resets back to
+  `ACTIVE`);
   `UNIQUE (reg_hoja, province_code)`; `GIN (norm_name gin_trgm_ops)`.
   *(Postgres does **not** enforce uniqueness across `NULL` `reg_hoja`, so the constraint governs
   only Hoja-bearing rows; null-Hoja companies are never auto-deduped — they are create-and-flagged
@@ -123,13 +126,15 @@ flowchart LR
 
 ## Implementation issues
 
-- [ ] Migration: extensions + live tables (incl. `borme_act.inscripcion`/`doc_seq`,
+- [x] Migration: extensions + live tables (incl. `borme_act.inscripcion`/`doc_seq`,
       `company.suppressed`/`name_match_flag`, `person.suppressed`) + indexes + UNIQUE constraints.
-- [ ] Migration: `staging_act` + `borme_log` (status incl. SKIPPED, `error_kind`, `source_path`).
-- [ ] Migration: `act_correction` audit table (canonical target locator + resolved `target_act_id`).
-- [ ] Migration: `match_candidate` derived table + scoring columns.
-- [ ] Migration: `suppression` + `erasure_log` data-protection tables (independent of act rows).
-- [ ] Temporal-interval handling (close previous `valid_to` on new event/address).
-- [ ] Idempotency constraints (incl. `doc_seq` discriminator) + `ON CONFLICT DO NOTHING` patterns.
-- [ ] Migration tooling/runner (Flyway) wired into deployment ([ADR-0016](../architecture/0016-database-schema-migrations.md)).
-- [ ] Seed/reference data (province codes, role enum).
+- [x] Migration: `staging_act` + `borme_log` (status incl. SKIPPED, `error_kind`, `source_path`).
+- [x] Migration: `act_correction` audit table (canonical target locator + resolved `target_act_id`).
+- [x] Migration: `match_candidate` derived table + scoring columns.
+- [x] Migration: `suppression` + `erasure_log` data-protection tables (independent of act rows).
+- [x] Temporal-interval handling (close previous `valid_to` on new event/address).
+- [x] Idempotency constraints (incl. `doc_seq` discriminator) + `ON CONFLICT DO NOTHING` patterns.
+- [x] Migration tooling/runner (Flyway) wired into deployment ([ADR-0016](../architecture/0016-database-schema-migrations.md)).
+- [x] Seed/reference data (province codes).
+- [ ] Role enum: `appointment.role` constraint/seed table (deferred — BORME role vocabulary needs bormeparser dictionary port first).
+- [ ] Migration: `company.status` column (`ACTIVE`|`DISSOLVED`|`EXTINCT`|`MERGED`, default `ACTIVE`; CHECK constraint) — set by `DISOLUCION`, `EXTINCION`, `FUSION`, `REAPERTURA` act ingestion.
