@@ -24,6 +24,9 @@ out/
 .mermaid/tmp/
 node_modules/
 
+# ---- Runtime secrets ----
+.env
+
 # ---- Local tooling ----
 .claude/
 
