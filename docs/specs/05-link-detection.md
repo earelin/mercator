@@ -14,8 +14,11 @@ about each.
 ## Links answered
 
 1. **Shared administrator.** Two companies are linked if the same resolved person holds (or
-   held, within overlapping validity) an administrative role in both. Returns the companies,
-   the shared person, and the overlapping period.
+   ever held) an administrative role in both. Each appointment keeps its **full history**
+   (temporal `appointment` intervals), so the match spans current *and* past roles by
+   default; it can optionally be constrained to overlapping validity (people who held the
+   roles at the same time), in which case the overlapping period is returned. Returns the
+   companies and the shared person.
 2. **Shared registered address.** Two companies are linked if they share the same
    normalised registered address. Each company keeps its **full address history**
    (temporal `company_address` intervals), so the match spans current *and* past domiciles by

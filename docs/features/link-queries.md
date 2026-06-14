@@ -12,9 +12,11 @@ multi-hop connections — implemented as indexed joins and recursive CTEs inside
 
 ## Functional behaviour
 
-- **Shared administrator** — self-join `appointment` on `person_id` where validity overlaps;
-  return the two companies, the shared (resolved) person, the role(s) and the overlapping
-  period. Carries the person's **confidence**.
+- **Shared administrator** — self-join `appointment` on `person_id`. Spans the **full
+  appointment history** by default (companies that *ever* shared an administrator, current or
+  past roles), returning the two companies, the shared (resolved) person and the role(s);
+  optionally constrained to overlapping validity for people who held the roles at the same
+  time (then also returning the overlapping period). Carries the person's **confidence**.
 - **Shared registered address** — self-join `company_address` on `address_id` (stable via
   `resolve_address`'s exact-normalised key). Spans the **full address history** by default
   (companies that were *ever* domiciled at the same address, current or past intervals);
@@ -54,7 +56,7 @@ flowchart LR
 
 ## Implementation issues
 
-- [ ] Shared-administrator query (overlap-aware self-join) + confidence.
+- [ ] Shared-administrator query (full-history self-join, optional overlap constraint) + confidence.
 - [ ] Shared-registered-address query.
 - [ ] Bounded multi-hop recursive CTE with path-array cycle detection.
 - [ ] Confidence aggregation across a path.
