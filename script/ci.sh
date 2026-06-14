@@ -97,12 +97,12 @@ fi
 
 # --- 4) Docker Compose lint -----------------------------------------------
 bold "Docker Compose lint (dclint)"
-if command -v dclint >/dev/null 2>&1; then
+if command -v npx >/dev/null 2>&1; then
   # require-quotes-in-ports: false positive — dclint misidentifies already-quoted ports as unquoted
   # no-unbound-port-interfaces: intentionally not binding to 127.0.0.1
-  if dclint . --disable-rule require-quotes-in-ports --disable-rule no-unbound-port-interfaces; then ok "docker-compose files"; else err "docker-compose lint issues"; fail=1; fi
+  if npx dclint .; then ok "docker-compose files"; else err "docker-compose lint issues"; fail=1; fi
 else
-  err "dclint not found — install: npm i -g dclint"; fail=1
+  err "npx not found"; fail=1
 fi
 
 # --- Result ---------------------------------------------------------------

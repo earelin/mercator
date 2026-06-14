@@ -11,10 +11,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-mercator}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - '127.0.0.1:${DB_PORT:-5432}:5432'
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mercator} -d ${POSTGRES_DB:-mercator}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mercator} -d ${POSTGRES_DB:-mercator}" ]
       interval: 10s
       timeout: 5s
       retries: 5
