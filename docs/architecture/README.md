@@ -24,3 +24,4 @@ Proposed**; only the maintainer marks one **Accepted**, and **Accepted ADRs are 
 | [0010](0010-postgresql-ctes-over-graph-db.md) | PostgreSQL recursive CTEs over a graph database | Proposed |
 | [0011](0011-cheap-eu-vps-hosting.md) | Single cheap EU VPS for hosting | Proposed |
 | [0012](0012-reuse-bormeparser-dictionaries-gpl.md) | Reuse bormeparser dictionaries (GPL) | Proposed |
+| [0013](0013-api-key-auth-and-config.md) | API key authentication, configured per environment | Proposed |

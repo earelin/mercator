@@ -2,7 +2,8 @@
 
 **Realised by:** [read-api](../features/read-api.md), [link-queries](../features/link-queries.md).
 **Constrained by:** [ADR-0005](../architecture/0005-java-ingester-and-read-api.md),
-[ADR-0006](../architecture/0006-hybrid-write-path.md).
+[ADR-0006](../architecture/0006-hybrid-write-path.md),
+[ADR-0013](../architecture/0013-api-key-auth-and-config.md).
 
 ## What this describes
 
@@ -31,3 +32,14 @@ Properties:
 - Stateless; every response derives from PostgreSQL.
 - Returns confidence/match metadata wherever identity is probabilistic, so consumers never
   mistake a candidate for a fact.
+
+## Access control
+
+- **In production the API is not anonymous:** every request must carry a valid **API key**
+  (header `X-API-Key`); missing/invalid keys get `401 Unauthorized`. Health/readiness probes
+  are the only unauthenticated endpoints.
+- **In local development authentication is disabled** — no key is needed.
+- The behaviour is selected by **environment configuration** (not by build), enabled by
+  default and **fail-closed**; accepted keys come from an environment variable / injected
+  secret. See [ADR-0013](../architecture/0013-api-key-auth-and-config.md).
+- Consumers (including the contracts project) must hold and send a key in production.

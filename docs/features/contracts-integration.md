@@ -14,6 +14,8 @@ no write coupling.
 ## Functional behaviour
 
 - The contracts project consumes Mercator **read-only** (via the read API or a read replica).
+  Against the production API it must send a valid **API key** (`X-API-Key`); see
+  [ADR-0013](../architecture/0013-api-key-auth-and-config.md).
 - **Matching key:** normalised company name + province, using the **same** normalisation
   function as ingestion ([entity-extraction-normalisation](entity-extraction-normalisation.md))
   and `pg_trgm` similarity.

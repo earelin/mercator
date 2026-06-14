@@ -46,3 +46,14 @@ The constraints that shape every implementation choice, expressed as requirement
 - **Reproducibility:** components run in Docker; nightly `pg_dump` to object storage.
 - **Licensing:** GPLv3-compatible — bormeparser dictionaries are reused (see
   [ADR-0012](../architecture/0012-reuse-bormeparser-dictionaries-gpl.md)).
+
+## Configuration & security
+
+- **Cloud-native / 12-factor config:** all runtime configuration comes from the
+  **environment** (env vars, Micronaut environments `dev`/`prod`); the **same artifact** runs
+  everywhere — no per-environment builds. Secrets are **injected at run time** (Docker/K8s
+  secret or cloud secret manager) and are never committed or baked into images.
+- **API access control:** in production the read API requires an **API key** (header
+  `X-API-Key`); local development runs anonymously. Auth is enabled by default and
+  **fail-closed**; accepted keys come from an env var / secret. See
+  [ADR-0013](../architecture/0013-api-key-auth-and-config.md) and [Spec 6](06-public-api.md).
