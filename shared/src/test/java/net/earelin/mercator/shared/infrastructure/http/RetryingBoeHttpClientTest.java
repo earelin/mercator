@@ -61,9 +61,8 @@ class RetryingBoeHttpClientTest {
     @Test
     void retries_on_429_then_succeeds() {
         FakeTransport transport = new FakeTransport().enqueue(status(429, new byte[0])).enqueue(ok("ok"));
-        HttpFetchResult result = client(transport, 5).get(URI_UNDER_TEST);
 
-        assertThat(result).isInstanceOf(HttpFetchResult.Success.class);
+        assertThat(client(transport, 5).get(URI_UNDER_TEST)).isInstanceOf(HttpFetchResult.Success.class);
         assertThat(transport.served).isEqualTo(2);
         assertThat(sleeps).hasSize(1);
     }
@@ -109,7 +108,7 @@ class RetryingBoeHttpClientTest {
         assertThat(failure.statusCode()).isZero();
     }
 
-    // --- helpers ---------------------------------------------------------------------------
+    // --- helpers / stubs -------------------------------------------------------------------
 
     private RetryingBoeHttpClient client(HttpTransport transport, int maxAttempts) {
         BoeSourceConfig config = new BoeSourceConfig(
@@ -139,6 +138,7 @@ class RetryingBoeHttpClientTest {
         return new HttpResponseBytes(code, body, Map.of());
     }
 
+    /** Stub transport returning a programmed sequence of responses (or thrown errors). */
     private static final class FakeTransport implements HttpTransport {
         private final Deque<Object> steps = new ArrayDeque<>();
         private int served;

@@ -18,6 +18,7 @@ dependencies {
 
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.assertj.core)
+    testImplementation(libs.mockito.core)
     // assertj-db is the standard for database-backed checks (persistence/borme_log tests).
     testImplementation(libs.assertj.db)
     testRuntimeOnly(libs.junit.platform.launcher)

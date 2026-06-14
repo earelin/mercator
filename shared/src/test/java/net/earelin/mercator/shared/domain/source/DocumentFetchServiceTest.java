@@ -1,6 +1,9 @@
 package net.earelin.mercator.shared.domain.source;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -31,33 +34,35 @@ class DocumentFetchServiceTest {
     private static final byte[] EMPTY_XML_BODY = ("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             + "<documento><texto></texto></documento>").getBytes(StandardCharsets.UTF_8);
 
+    // Stateful stub doubles — assertions are made against their captured state, not interactions.
+    private final RecordingHttpClient http = new RecordingHttpClient();
     private final InMemoryCache cache = new InMemoryCache();
     private final RecordingBormeLog bormeLog = new RecordingBormeLog();
+    // The extractors are pure input stubs (no state to assert) — Mockito stubs them concisely.
+    private final HtmlTextExtractor htmlExtractor = mock(HtmlTextExtractor.class);
+    private final PdfTextExtractor pdfExtractor = mock(PdfTextExtractor.class);
+    private final DocumentFetchService service = new DocumentFetchService(
+            http, cache, bormeLog, new XmlDocumentParser(), htmlExtractor, pdfExtractor);
 
     @Test
     void xml_happy_path_fetches_parses_caches_and_logs_fetched() {
-        FakeHttpClient http = new FakeHttpClient(Map.of(URL_XML, success(XML_BODY)));
-        DocumentFetchService service = service(http, html(Optional.empty()), pdf(Optional.empty()));
+        http.respond(URL_XML, success(XML_BODY));
 
-        FetchOutcome outcome = service.fetch(DESCRIPTOR, CONTEXT);
+        FetchedDocument doc = assertFetched(service.fetch(DESCRIPTOR, CONTEXT));
 
-        FetchedDocument doc = assertFetched(outcome);
         assertThat(doc.representation()).isEqualTo(Representation.XML);
         assertThat(doc.paragraphs()).hasSize(2);
-        assertThat(cache.store).containsKey("BORME-A-2024-1-01");
-        assertThat(bormeLog.entries).hasSize(1);
-        assertThat(bormeLog.entries.get(0).status()).isEqualTo(BormeLogStatus.FETCHED);
+        assertThat(cache.store.get("BORME-A-2024-1-01").representation()).isEqualTo(Representation.XML);
+        assertThat(bormeLog.entries).singleElement()
+                .extracting(BormeLogEntry::status).isEqualTo(BormeLogStatus.FETCHED);
     }
 
     @Test
     void cache_hit_serves_with_zero_network_requests() {
         cache.put("BORME-A-2024-1-01", new CachedDocument(Representation.XML, XML_BODY, StandardCharsets.UTF_8));
-        FakeHttpClient http = new FakeHttpClient(Map.of()); // any call would throw
 
-        DocumentFetchService service = service(http, html(Optional.empty()), pdf(Optional.empty()));
-        FetchOutcome outcome = service.fetch(DESCRIPTOR, CONTEXT);
+        FetchedDocument doc = assertFetched(service.fetch(DESCRIPTOR, CONTEXT));
 
-        FetchedDocument doc = assertFetched(outcome);
         assertThat(doc.representation()).isEqualTo(Representation.XML);
         assertThat(http.calls).as("cache hit must not touch the network").isZero();
         assertThat(bormeLog.entries).as("cache hit should not re-record borme_log").isEmpty();
@@ -69,12 +74,10 @@ class DocumentFetchServiceTest {
         // fresh fetch rather than failing.
         cache.put("BORME-A-2024-1-01",
                 new CachedDocument(Representation.XML, "<malformed".getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8));
-        FakeHttpClient http = new FakeHttpClient(Map.of(URL_XML, success(XML_BODY)));
+        http.respond(URL_XML, success(XML_BODY));
 
-        DocumentFetchService service = service(http, html(Optional.empty()), pdf(Optional.empty()));
-        FetchOutcome outcome = service.fetch(DESCRIPTOR, CONTEXT);
+        FetchedDocument doc = assertFetched(service.fetch(DESCRIPTOR, CONTEXT));
 
-        FetchedDocument doc = assertFetched(outcome);
         assertThat(doc.representation()).isEqualTo(Representation.XML);
         assertThat(http.calls).as("corrupt cache entry must trigger a re-fetch").isEqualTo(1);
         // The good body replaces the corrupt one in the cache.
@@ -83,14 +86,12 @@ class DocumentFetchServiceTest {
 
     @Test
     void empty_xml_falls_back_to_txt() {
-        FakeHttpClient http = new FakeHttpClient(Map.of(
-                URL_XML, success(EMPTY_XML_BODY),
-                URL_HTML, success("ignored".getBytes(StandardCharsets.UTF_8))));
-        DocumentFetchService service = service(http, html(Optional.of("stripped txt body")), pdf(Optional.empty()));
+        http.respond(URL_XML, success(EMPTY_XML_BODY));
+        http.respond(URL_HTML, success("ignored".getBytes(StandardCharsets.UTF_8)));
+        when(htmlExtractor.extractText(any())).thenReturn(Optional.of("stripped txt body"));
 
-        FetchOutcome outcome = service.fetch(DESCRIPTOR, CONTEXT);
+        FetchedDocument doc = assertFetched(service.fetch(DESCRIPTOR, CONTEXT));
 
-        FetchedDocument doc = assertFetched(outcome);
         assertThat(doc.representation()).isEqualTo(Representation.TXT);
         assertThat(doc.rawBody()).isEqualTo("stripped txt body");
         assertThat(cache.store.get("BORME-A-2024-1-01").representation()).isEqualTo(Representation.TXT);
@@ -98,53 +99,47 @@ class DocumentFetchServiceTest {
 
     @Test
     void txt_error_page_falls_back_to_pdf() {
-        FakeHttpClient http = new FakeHttpClient(Map.of(
-                URL_XML, new HttpFetchResult.Failure(ErrorKind.PERMANENT, 404, "not found"),
-                URL_HTML, success("error page".getBytes(StandardCharsets.UTF_8)),
-                URL_PDF, success("%PDF-bytes".getBytes(StandardCharsets.UTF_8))));
-        DocumentFetchService service = service(http, html(Optional.empty()), pdf(Optional.of("pdf text")));
+        http.respond(URL_XML, failure(ErrorKind.PERMANENT, 404));
+        http.respond(URL_HTML, success("error page".getBytes(StandardCharsets.UTF_8)));
+        http.respond(URL_PDF, success("%PDF-bytes".getBytes(StandardCharsets.UTF_8)));
+        // htmlExtractor returns empty by default → the txt error page is skipped.
+        when(pdfExtractor.extractText(any())).thenReturn(Optional.of("pdf text"));
 
-        FetchOutcome outcome = service.fetch(DESCRIPTOR, CONTEXT);
+        FetchedDocument doc = assertFetched(service.fetch(DESCRIPTOR, CONTEXT));
 
-        FetchedDocument doc = assertFetched(outcome);
         assertThat(doc.representation()).isEqualTo(Representation.PDF);
         assertThat(doc.rawBody()).isEqualTo("pdf text");
     }
 
     @Test
     void all_representations_fail_records_retryable_error() {
-        FakeHttpClient http = new FakeHttpClient(Map.of(
-                URL_XML, new HttpFetchResult.Failure(ErrorKind.RETRYABLE, 500, "server error"),
-                URL_HTML, new HttpFetchResult.Failure(ErrorKind.PERMANENT, 404, "not found"),
-                URL_PDF, new HttpFetchResult.Failure(ErrorKind.PERMANENT, 404, "not found")));
-        DocumentFetchService service = service(http, html(Optional.empty()), pdf(Optional.empty()));
+        http.respond(URL_XML, failure(ErrorKind.RETRYABLE, 500));
+        http.respond(URL_HTML, failure(ErrorKind.PERMANENT, 404));
+        http.respond(URL_PDF, failure(ErrorKind.PERMANENT, 404));
 
         FetchOutcome.Failed failed = assertFailed(service.fetch(DESCRIPTOR, CONTEXT));
+
         assertThat(failed.error().kind()).isEqualTo(ErrorKind.RETRYABLE);
-        assertThat(bormeLog.entries).hasSize(1);
-        BormeLogEntry entry = bormeLog.entries.get(0);
-        assertThat(entry.status()).isEqualTo(BormeLogStatus.ERROR);
-        assertThat(entry.errorKind()).isEqualTo(ErrorKind.RETRYABLE);
+        assertThat(bormeLog.entries).singleElement().satisfies(entry -> {
+            assertThat(entry.status()).isEqualTo(BormeLogStatus.ERROR);
+            assertThat(entry.errorKind()).isEqualTo(ErrorKind.RETRYABLE);
+        });
     }
 
     @Test
     void all_representations_permanently_absent_records_permanent_error() {
-        FakeHttpClient http = new FakeHttpClient(Map.of(
-                URL_XML, new HttpFetchResult.Failure(ErrorKind.PERMANENT, 404, "not found"),
-                URL_HTML, new HttpFetchResult.Failure(ErrorKind.PERMANENT, 404, "not found"),
-                URL_PDF, new HttpFetchResult.Failure(ErrorKind.PERMANENT, 404, "not found")));
-        DocumentFetchService service = service(http, html(Optional.empty()), pdf(Optional.empty()));
+        http.respond(URL_XML, failure(ErrorKind.PERMANENT, 404));
+        http.respond(URL_HTML, failure(ErrorKind.PERMANENT, 404));
+        http.respond(URL_PDF, failure(ErrorKind.PERMANENT, 404));
 
         FetchOutcome.Failed failed = assertFailed(service.fetch(DESCRIPTOR, CONTEXT));
+
         assertThat(failed.error().kind()).isEqualTo(ErrorKind.PERMANENT);
-        assertThat(bormeLog.entries.get(0).errorKind()).isEqualTo(ErrorKind.PERMANENT);
+        assertThat(bormeLog.entries).singleElement()
+                .extracting(BormeLogEntry::errorKind).isEqualTo(ErrorKind.PERMANENT);
     }
 
-    // --- helpers / fakes -------------------------------------------------------------------
-
-    private DocumentFetchService service(FakeHttpClient http, HtmlTextExtractor html, PdfTextExtractor pdf) {
-        return new DocumentFetchService(http, cache, bormeLog, new XmlDocumentParser(), html, pdf);
-    }
+    // --- helpers / stubs -------------------------------------------------------------------
 
     private static FetchedDocument assertFetched(FetchOutcome outcome) {
         assertThat(outcome).isInstanceOf(FetchOutcome.Fetched.class);
@@ -160,20 +155,17 @@ class DocumentFetchServiceTest {
         return new HttpFetchResult.Success(body);
     }
 
-    private static HtmlTextExtractor html(Optional<String> result) {
-        return body -> result;
+    private static HttpFetchResult failure(ErrorKind kind, int statusCode) {
+        return new HttpFetchResult.Failure(kind, statusCode, "status " + statusCode);
     }
 
-    private static PdfTextExtractor pdf(Optional<String> result) {
-        return body -> result;
-    }
-
-    private static final class FakeHttpClient implements BoeHttpClient {
-        private final Map<URI, HttpFetchResult> responses;
+    /** Stub that returns canned responses per URL and records how many requests were made. */
+    private static final class RecordingHttpClient implements BoeHttpClient {
+        private final Map<URI, HttpFetchResult> responses = new HashMap<>();
         private int calls;
 
-        FakeHttpClient(Map<URI, HttpFetchResult> responses) {
-            this.responses = responses;
+        void respond(URI uri, HttpFetchResult result) {
+            responses.put(uri, result);
         }
 
         @Override
