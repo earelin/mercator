@@ -9,7 +9,7 @@ extract act-specific payloads — reusing bormeparser's domain dictionaries.
 ## Related specs / ADRs
 
 - Specs: [3 — Extraction](../specs/03-extraction.md)
-- ADRs: [0002 — Prefer structured text/XML over PDF](../architecture/0002-txt-php-over-pdf-parsing.md), [0012 — Reuse bormeparser dictionaries](../architecture/0012-reuse-bormeparser-dictionaries-gpl.md)
+- ADRs: [0002 — Prefer structured text/XML over PDF](../architecture/0002-txt-php-over-pdf-parsing.md), [0012 — Reuse bormeparser dictionaries](../architecture/0012-reuse-bormeparser-dictionaries-gpl.md), [0015 — Auto-apply Fe de erratas](../architecture/0015-auto-apply-fe-de-erratas-corrections.md)
 
 ## Functional behaviour
 
@@ -27,6 +27,13 @@ extract act-specific payloads — reusing bormeparser's domain dictionaries.
 - **Dictionaries:** reuse bormeparser's `regex.py`/`acto.py`/`cargo.py`/`provincia.py`/
   `sociedad.py` tables (ported under GPL) for act vocabulary, role canonicalisation, province
   codes and the company-vs-person heuristic.
+- **Corrections (`FE_ERRATAS`):** a block whose `parrafo` opens with `Fe de erratas:` is a
+  correction, not a normal act. Parse it into an **unresolved correction record** — the target
+  reference (company + corrected publication's Inscripción/Datos registrales) and the
+  erroneous→correct value — and hand it to the shared ingestion step, which auto-applies it
+  (see [errata-corrections](errata-corrections.md),
+  [ADR-0015](../architecture/0015-auto-apply-fe-de-erratas-corrections.md)). The parser detects
+  and structures it but never applies it.
 - **Scope:** parse the **full act-type catalogue** ([Spec 3](../specs/03-extraction.md)).
   Any keyword not yet mapped is captured as `OTROS` with raw text retained, so nothing is
   silently dropped.
@@ -59,6 +66,9 @@ flowchart LR
   heuristic at extraction time.
 - **Encoding artefacts** from the source.
 - **Unknown/new act keywords** — captured as `OTROS`, never dropped.
+- **`Fe de erratas` blocks** — detected by the leading keyword and parsed as a correction
+  record (target + before→after), not as a normal act; applied downstream
+  ([errata-corrections](errata-corrections.md)).
 
 ## Acceptance criteria
 
@@ -76,5 +86,6 @@ flowchart LR
 - [ ] Cargo-act parser (Nombramientos/Ceses → role→[names]).
 - [ ] Cambio de domicilio payload parser.
 - [ ] `OTROS` catch-all retaining raw text for unknown keywords.
+- [ ] `FE_ERRATAS` recognition + correction-record parsing (target ref + before→after); application in [errata-corrections](errata-corrections.md).
 - [ ] Parser accuracy harness against a labelled multi-province sample (≥95% target).
 - [ ] Parsers for remaining act types (capital, fusión, disolución, unipersonalidad, …).

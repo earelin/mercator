@@ -9,7 +9,7 @@ and history.
 ## Related specs / ADRs
 
 - Specs: [2 — Ingestion](../specs/02-ingestion.md), [4 — Data model](../specs/04-data-model.md)
-- ADRs: [0004 — PostgreSQL](../architecture/0004-postgresql-as-primary-datastore.md), [0006 — Hybrid write path](../architecture/0006-hybrid-write-path.md), [0008 — Registry coordinates as key](../architecture/0008-registry-coordinates-as-company-natural-key.md)
+- ADRs: [0004 — PostgreSQL](../architecture/0004-postgresql-as-primary-datastore.md), [0006 — Hybrid write path](../architecture/0006-hybrid-write-path.md), [0008 — Registry coordinates as key](../architecture/0008-registry-coordinates-as-company-natural-key.md), [0015 — Auto-apply Fe de erratas](../architecture/0015-auto-apply-fe-de-erratas-corrections.md)
 
 ## Functional behaviour
 
@@ -30,6 +30,10 @@ Live tables (conceptual columns; see [Spec 4](../specs/04-data-model.md)):
 - **appointment** — `company_id`, `person_id`, `role`, `event_type`, `act_id`, `valid_from`,
   `valid_to`.
 - **company_address** — `company_id`, `address_id`, `valid_from`, `valid_to`.
+- **act_correction** — the audit trail for *Fe de erratas* ([ADR-0015](../architecture/0015-auto-apply-fe-de-erratas-corrections.md)):
+  `errata_act_id` (the `FE_ERRATAS` `borme_act`), the **target** (corrected `act_id` / entity
+  ref), `field`, `old_value`, `new_value`, `status` (APPLIED|UNAPPLIED), `flag_reason`. Lets a
+  correction be traced and reversed; the pre-correction value is never lost.
 
 Backfill-only tables:
 
@@ -61,6 +65,8 @@ flowchart LR
 - **Null `reg_hoja`** — cannot use the natural key; handled by resolution policy (flag, not
   silent name-merge).
 - **Schema migrations** — adding act types adds enum values/payload, not core tables.
+- **Errata target missing** — a `FE_ERRATAS` whose target act is not present is stored with
+  `act_correction.status = UNAPPLIED` + `flag_reason`, not dropped; reapplied on a later pass.
 
 ## Acceptance criteria
 
@@ -72,6 +78,7 @@ flowchart LR
 
 - [ ] Migration: extensions + live tables + indexes + UNIQUE constraints.
 - [ ] Migration: `staging_act` + `borme_log`.
+- [ ] Migration: `act_correction` audit table (errata → target, old/new value, status, flag).
 - [ ] Temporal-interval handling (close previous `valid_to` on new event/address).
 - [ ] Idempotency constraints + `ON CONFLICT DO NOTHING` upsert patterns.
 - [ ] Migration tooling/runner wired into deployment.

@@ -39,6 +39,15 @@ under GDPR and Spain's LOPDGDD (LO 3/2018). It therefore must:
 - Mercator must nonetheless provide a **documented process** and the ability to
   **suppress/limit** an individual's visibility/indexing on justified request.
 
+## Accuracy
+
+- The BORME publishes **Fe de erratas** notices that correct earlier entries. Mercator
+  **auto-applies** these corrections to the data they fix (keeping an audit trail), so its
+  output reflects the corrected record rather than a known error — supporting the GDPR
+  accuracy obligation ([ADR-0015](../architecture/0015-auto-apply-fe-de-erratas-corrections.md)).
+  A correction never resurfaces a suppressed identifier and never makes the data
+  authentic — only the signed PDF is.
+
 ## Residual identifiers
 
 - Some older entries contain DNI/NIE. Mercator **suppresses these residual personal

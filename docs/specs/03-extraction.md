@@ -83,6 +83,18 @@ normalises every spelling/spacing variant to a canonical enum.
 > Adding a further act type later requires no schema change — only a new enum value and
 > parser branch (see [Spec 4](04-data-model.md)).
 
+### Corrections (Fe de erratas)
+
+`FE_ERRATAS` is a **correction act**, not a normal company act. Its `<p class="parrafo">`
+opens with **"Fe de erratas: Se publicó por error…"** and references a prior publication by
+its Inscripción/Asiento and Datos registrales. Mercator extracts the **target reference** (the
+company + the corrected publication's coordinates) and the **change** (erroneous value →
+correct value), then **auto-applies** the fix to the previously ingested act/entity while
+keeping the pre-correction value as an audit trail; an un-matchable or ambiguous correction is
+recorded **unapplied and flagged**, never guessed. See
+[errata-corrections](../features/errata-corrections.md) and
+[ADR-0015](../architecture/0015-auto-apply-fe-de-erratas-corrections.md).
+
 ## Roles (cargos)
 
 Cargo acts use standardised abbreviations, all mapped to a canonical enum: `Adm. Unico`,

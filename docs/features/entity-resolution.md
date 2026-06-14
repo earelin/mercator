@@ -65,6 +65,10 @@ flowchart LR
 - **Address variants** — the same domicile written differently (abbreviations, accents)
   normalises to one `norm_text` where possible; residual variants stay distinct addresses and
   are bridged by the trigram *search*, not by merging identity.
+- **Errata name fix** — when a *Fe de erratas* corrects an entity name
+  ([ADR-0015](../architecture/0015-auto-apply-fe-de-erratas-corrections.md)), resolution is
+  re-run on the corrected name; a probabilistic person may re-point or have its confidence
+  recomputed (the typo'd name no longer anchors a spurious person).
 
 ## Acceptance criteria
 

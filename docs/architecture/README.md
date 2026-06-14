@@ -26,3 +26,4 @@ Proposed**; only the maintainer marks one **Accepted**, and **Accepted ADRs are 
 | [0012](0012-reuse-bormeparser-dictionaries-gpl.md) | Reuse bormeparser dictionaries (GPL) | Proposed |
 | [0013](0013-api-key-auth-and-config.md) | API key authentication, configured per environment | Proposed |
 | [0014](0014-hexagonal-architecture.md) | Hexagonal architecture (ports and adapters) | Proposed |
+| [0015](0015-auto-apply-fe-de-erratas-corrections.md) | Auto-apply Fe de erratas corrections, with an audit trail | Proposed |

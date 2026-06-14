@@ -29,6 +29,7 @@ Every feature doc follows the same template:
 | [summary-enumeration](summary-enumeration.md) | [1](../specs/01-data-sources.md), [2](../specs/02-ingestion.md) | [0003](../architecture/0003-datosabiertos-rest-api-over-legacy-xml.md) |
 | [document-fetch](document-fetch.md) | [1](../specs/01-data-sources.md), [2](../specs/02-ingestion.md), [7](../specs/07-data-protection.md) | [0002](../architecture/0002-txt-php-over-pdf-parsing.md) |
 | [act-parsing](act-parsing.md) | [3](../specs/03-extraction.md) | [0002](../architecture/0002-txt-php-over-pdf-parsing.md), [0012](../architecture/0012-reuse-bormeparser-dictionaries-gpl.md) |
+| [errata-corrections](errata-corrections.md) | [2](../specs/02-ingestion.md), [3](../specs/03-extraction.md), [4](../specs/04-data-model.md), [7](../specs/07-data-protection.md) | [0015](../architecture/0015-auto-apply-fe-de-erratas-corrections.md), [0007](../architecture/0007-single-source-of-truth-entity-resolution.md) |
 | [entity-extraction-normalisation](entity-extraction-normalisation.md) | [3](../specs/03-extraction.md), [4](../specs/04-data-model.md) | [0007](../architecture/0007-single-source-of-truth-entity-resolution.md) |
 | [database-schema](database-schema.md) | [2](../specs/02-ingestion.md), [4](../specs/04-data-model.md) | [0004](../architecture/0004-postgresql-as-primary-datastore.md), [0006](../architecture/0006-hybrid-write-path.md), [0008](../architecture/0008-registry-coordinates-as-company-natural-key.md) |
 | [entity-resolution](entity-resolution.md) | [4](../specs/04-data-model.md), [5](../specs/05-link-detection.md) | [0007](../architecture/0007-single-source-of-truth-entity-resolution.md), [0008](../architecture/0008-registry-coordinates-as-company-natural-key.md), [0009](../architecture/0009-probabilistic-person-resolution.md) |
@@ -41,7 +42,7 @@ Every feature doc follows the same template:
 | [deployment-operations](deployment-operations.md) | [8](../specs/08-non-functional.md) | [0011](../architecture/0011-cheap-eu-vps-hosting.md) |
 
 **V1 pipeline (end to end):** summary-enumeration → document-fetch → act-parsing (full act
-catalogue) → entity-extraction-normalisation → database-schema → entity-resolution →
+catalogue, incl. errata-corrections) → entity-extraction-normalisation → database-schema → entity-resolution →
 historical-backfill (offline `ingester`) + daily-incremental (in-server scheduler) →
 read-api + link-queries, with contracts-integration and data-protection, all deployed per
 deployment-operations. The shared fetch/parse/normalise/resolve logic lives in the `shared`

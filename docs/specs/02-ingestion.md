@@ -33,7 +33,10 @@ persist the resulting acts.
   left off; already-processed documents are not re-fetched or re-parsed unnecessarily.
   Progress is tracked per document.
 - **Idempotency.** Processing the same document more than once never creates duplicate
-  acts or duplicate entities. Re-running a day is always safe.
+  acts or duplicate entities. Re-running a day is always safe — including *Fe de erratas*
+  corrections, which apply at most once (guarded by an applied-marker) and whose target,
+  published earlier, is normally already present under forward date iteration
+  ([ADR-0015](../architecture/0015-auto-apply-fe-de-erratas-corrections.md)).
 - **Politeness.** Requests to the BOE are rate-limited with backoff on 429/5xx, identify
   themselves with a User-Agent, and raw responses are cached so re-parsing never
   re-downloads.

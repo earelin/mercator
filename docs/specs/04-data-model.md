@@ -5,7 +5,8 @@
 **Constrained by:** [ADR-0004](../architecture/0004-postgresql-as-primary-datastore.md),
 [ADR-0007](../architecture/0007-single-source-of-truth-entity-resolution.md),
 [ADR-0008](../architecture/0008-registry-coordinates-as-company-natural-key.md),
-[ADR-0009](../architecture/0009-probabilistic-person-resolution.md).
+[ADR-0009](../architecture/0009-probabilistic-person-resolution.md),
+[ADR-0015](../architecture/0015-auto-apply-fe-de-erratas-corrections.md).
 
 ## What this describes
 
@@ -71,6 +72,16 @@ erDiagram
 - The same applies to company-address intervals: a new domicilio closes the previous one.
 - This lets the API answer "who were the administrators on date X" and "which companies did
   person P run, and when".
+
+## Corrections (Fe de erratas)
+
+A `FE_ERRATAS` act corrects a prior publication. Mercator **auto-applies** the correction —
+rewriting the erroneous value on the target act/entity and re-running resolution when the fix
+is an entity name — while **retaining the pre-correction value** and a link from the amended
+row to the originating errata, so the change is auditable and reversible. Corrections that
+cannot be confidently matched or parsed are stored **unapplied and flagged**. See
+[ADR-0015](../architecture/0015-auto-apply-fe-de-erratas-corrections.md) and
+[errata-corrections](../features/errata-corrections.md).
 
 ## Extensibility
 

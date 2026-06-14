@@ -91,6 +91,12 @@ These are the load-bearing decisions; preserve them unless a new ADR supersedes 
   `work_mem` — do not add it preemptively. (ADR-0010)
 - **GDPR.** Suppress residual DNI/NIE from output; honour a suppression flag across
   re-ingestion; never claim the data is authentic (only the signed BORME PDF is). (Spec 7)
+- **Fe de erratas are auto-applied with an audit trail.** A `FE_ERRATAS` act (parrafo opens
+  with "Fe de erratas:") is parsed into a correction (target ref + before→after), then the
+  shared ingestion step rewrites the target act/entity (re-resolving on a name fix) while
+  retaining the pre-correction value (`act_correction`). The parser detects/structures but
+  never applies. Un-matchable/ambiguous corrections are stored **unapplied + flagged**, never
+  guessed; application is idempotent. (ADR-0015)
 - **API auth + config.** The read API requires an **API key** (`X-API-Key`) in production,
   anonymous in local dev; auth is **environment-toggled, enabled by default, fail-closed**.
   All config is 12-factor (env vars + Micronaut environments, one artifact); secrets are
