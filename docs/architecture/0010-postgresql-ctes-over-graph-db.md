@@ -23,6 +23,13 @@ Escalation rule: add the **Apache AGE** extension (which runs *inside* PostgreSQ
 backups, same connection, openCypher) **only if** a link query needs >3 unbounded hops or
 routinely exceeds ~1 s / blows `work_mem`.
 
+If escalated, the temporal and confidence semantics of links ([Spec 5](../specs/05-link-detection.md))
+must be preserved: validity intervals, the current-vs-historical temporal flag, and
+probabilistic person confidence do **not** map onto plain Cypher edge matching. The intended
+shape is a **hybrid** — AGE finds candidate paths; the temporal classification and confidence
+(including the historical-match penalty) are applied as a re-scoring pass in SQL, not inside
+the graph traversal — so the existing link semantics survive the move.
+
 ## Consequences
 
 - No new infrastructure; relationship queries share the one database and its backups.
