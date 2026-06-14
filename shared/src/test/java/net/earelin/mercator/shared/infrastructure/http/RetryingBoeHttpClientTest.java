@@ -25,7 +25,7 @@ class RetryingBoeHttpClientTest {
     private final List<Long> sleeps = new ArrayList<>();
 
     @Test
-    void returnsBodyOn200() {
+    void returns_body_on_200() {
         FakeTransport transport = new FakeTransport().enqueue(ok("hello"));
         HttpFetchResult result = client(transport, 5).get(URI_UNDER_TEST);
 
@@ -35,7 +35,7 @@ class RetryingBoeHttpClientTest {
     }
 
     @Test
-    void emptyBodyIsPermanentFailure() {
+    void empty_body_is_permanent_failure() {
         FakeTransport transport = new FakeTransport().enqueue(status(200, new byte[0]));
         HttpFetchResult.Failure failure =
                 assertInstanceOf(HttpFetchResult.Failure.class, client(transport, 5).get(URI_UNDER_TEST));
@@ -44,7 +44,7 @@ class RetryingBoeHttpClientTest {
     }
 
     @Test
-    void notFoundIsPermanentAndNotRetried() {
+    void not_found_is_permanent_and_not_retried() {
         FakeTransport transport = new FakeTransport().enqueue(status(404, new byte[0]));
         HttpFetchResult.Failure failure =
                 assertInstanceOf(HttpFetchResult.Failure.class, client(transport, 5).get(URI_UNDER_TEST));
@@ -55,7 +55,7 @@ class RetryingBoeHttpClientTest {
     }
 
     @Test
-    void otherClientErrorIsPermanentAndNotRetried() {
+    void other_client_error_is_permanent_and_not_retried() {
         FakeTransport transport = new FakeTransport().enqueue(status(403, new byte[0]));
         HttpFetchResult.Failure failure =
                 assertInstanceOf(HttpFetchResult.Failure.class, client(transport, 5).get(URI_UNDER_TEST));
@@ -65,7 +65,7 @@ class RetryingBoeHttpClientTest {
     }
 
     @Test
-    void retriesOn429ThenSucceeds() {
+    void retries_on_429_then_succeeds() {
         FakeTransport transport = new FakeTransport().enqueue(status(429, new byte[0])).enqueue(ok("ok"));
         HttpFetchResult result = client(transport, 5).get(URI_UNDER_TEST);
 
@@ -75,7 +75,7 @@ class RetryingBoeHttpClientTest {
     }
 
     @Test
-    void honoursRetryAfterHeader() {
+    void honours_retry_after_header() {
         FakeTransport transport = new FakeTransport()
                 .enqueue(new HttpResponseBytes(503, new byte[0], Map.of("Retry-After", List.of("2"))))
                 .enqueue(ok("ok"));
@@ -85,7 +85,7 @@ class RetryingBoeHttpClientTest {
     }
 
     @Test
-    void givesUpAsRetryableAfterMaxAttemptsOn5xx() {
+    void gives_up_as_retryable_after_max_attempts_on_5xx() {
         FakeTransport transport = new FakeTransport()
                 .enqueue(status(500, new byte[0]))
                 .enqueue(status(500, new byte[0]))
@@ -100,14 +100,14 @@ class RetryingBoeHttpClientTest {
     }
 
     @Test
-    void retriesNetworkErrorThenSucceeds() {
+    void retries_network_error_then_succeeds() {
         FakeTransport transport = new FakeTransport().enqueue(new IOException("connection reset")).enqueue(ok("ok"));
         assertInstanceOf(HttpFetchResult.Success.class, client(transport, 5).get(URI_UNDER_TEST));
         assertEquals(1, sleeps.size());
     }
 
     @Test
-    void givesUpAsRetryableWhenNetworkErrorsPersist() {
+    void gives_up_as_retryable_when_network_errors_persist() {
         FakeTransport transport = new FakeTransport()
                 .enqueue(new IOException("timeout"))
                 .enqueue(new IOException("timeout"));

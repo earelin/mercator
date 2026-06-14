@@ -12,7 +12,7 @@ class JsoupHtmlTextExtractorTest {
     private final JsoupHtmlTextExtractor extractor = new JsoupHtmlTextExtractor();
 
     @Test
-    void stripsChromeAndReturnsDocumentText() {
+    void strips_chrome_and_returns_document_text() {
         String html = "<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><title>BORME</title>"
                 + "<style>.x{}</style></head><body>"
                 + "<nav>Inicio Buscar Ayuda</nav>"
@@ -30,7 +30,7 @@ class JsoupHtmlTextExtractorTest {
     }
 
     @Test
-    void returnsEmptyForErrorPage() {
+    void returns_empty_for_error_page() {
         String html = "<html><body><div id=\"textoxslt\"><p>La p&aacute;gina solicitada "
                 + "no se ha encontrado en el servidor.</p></div></body></html>";
 
@@ -40,7 +40,7 @@ class JsoupHtmlTextExtractorTest {
     }
 
     @Test
-    void returnsEmptyForTrivialContent() {
+    void returns_empty_for_trivial_content() {
         String html = "<html><body><div id=\"textoxslt\">x</div></body></html>";
         assertTrue(extractor.extractText(html.getBytes(StandardCharsets.UTF_8)).isEmpty());
     }

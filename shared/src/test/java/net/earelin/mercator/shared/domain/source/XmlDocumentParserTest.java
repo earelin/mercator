@@ -17,7 +17,7 @@ class XmlDocumentParserTest {
     private final XmlDocumentParser parser = new XmlDocumentParser();
 
     @Test
-    void parsesMetadataParagraphsAndPreservesEncoding() throws IOException {
+    void parses_metadata_paragraphs_and_preserves_encoding() throws IOException {
         byte[] body = fixture("/fixtures/borme-a-sample.xml");
 
         XmlDocumentParser.ParsedXml parsed = parser.parse(body);
@@ -48,7 +48,7 @@ class XmlDocumentParserTest {
     }
 
     @Test
-    void emptyWhenNoTextoParagraphs() {
+    void empty_when_no_texto_paragraphs() {
         byte[] body = ("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
                 + "<documento><metadatos><identificador>BORME-A-2024-1-01</identificador>"
                 + "</metadatos><texto></texto></documento>")
@@ -61,7 +61,7 @@ class XmlDocumentParserTest {
     }
 
     @Test
-    void throwsOnMalformedXml() {
+    void throws_on_malformed_xml() {
         byte[] body = "<documento><texto><p class=\"parrafo\">unclosed".getBytes(StandardCharsets.UTF_8);
         assertThrows(XmlParseException.class, () -> parser.parse(body));
     }

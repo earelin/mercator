@@ -45,7 +45,7 @@ class LiveDocumentFetchSmokeTest {
             URI.create("https://www.boe.es/borme/dias/2024/01/02/pdfs/" + ID + ".pdf");
 
     @Test
-    void fetchesRealXmlThenServesFromCacheWithoutNewRequests(@TempDir Path cacheDir) {
+    void fetches_real_xml_then_serves_from_cache_without_new_requests(@TempDir Path cacheDir) {
         BoeSourceConfig config = BoeSourceConfig.defaults(
                 "Mercator-SmokeTest/0.1 (+https://github.com/earelin/mercator; mailto:xavier.carriba@gmail.com)");
         CountingTransport transport = new CountingTransport(new JdkHttpTransport(config));

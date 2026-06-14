@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 class TokenBucketRateLimiterTest {
 
     @Test
-    void spacesPermitsEvenlyAtConfiguredRate() {
+    void spaces_permits_evenly_at_configured_rate() {
         long[] now = {0L};
         LongSupplier clock = () -> now[0];
         List<Long> sleeps = new ArrayList<>();
@@ -32,7 +32,7 @@ class TokenBucketRateLimiterTest {
     }
 
     @Test
-    void doesNotSleepWhenRequestsAreNaturallySpacedOut() {
+    void does_not_sleep_when_requests_are_naturally_spaced_out() {
         long[] now = {0L};
         LongSupplier clock = () -> now[0];
         List<Long> sleeps = new ArrayList<>();
@@ -48,7 +48,7 @@ class TokenBucketRateLimiterTest {
     }
 
     @Test
-    void rejectsNonPositiveRate() {
+    void rejects_non_positive_rate() {
         assertThrows(IllegalArgumentException.class, () -> new TokenBucketRateLimiter(0.0));
     }
 }

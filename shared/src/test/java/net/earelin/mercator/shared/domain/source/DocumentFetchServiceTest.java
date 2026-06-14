@@ -37,7 +37,7 @@ class DocumentFetchServiceTest {
     private final RecordingBormeLog bormeLog = new RecordingBormeLog();
 
     @Test
-    void xmlHappyPathFetchesParsesCachesAndLogsFetched() {
+    void xml_happy_path_fetches_parses_caches_and_logs_fetched() {
         FakeHttpClient http = new FakeHttpClient(Map.of(URL_XML, success(XML_BODY)));
         DocumentFetchService service = service(http, html(Optional.empty()), pdf(Optional.empty()));
 
@@ -52,7 +52,7 @@ class DocumentFetchServiceTest {
     }
 
     @Test
-    void cacheHitServesWithZeroNetworkRequests() {
+    void cache_hit_serves_with_zero_network_requests() {
         cache.put("BORME-A-2024-1-01", new CachedDocument(Representation.XML, XML_BODY, StandardCharsets.UTF_8));
         FakeHttpClient http = new FakeHttpClient(Map.of()); // any call would throw
 
@@ -66,7 +66,7 @@ class DocumentFetchServiceTest {
     }
 
     @Test
-    void emptyXmlFallsBackToTxt() {
+    void empty_xml_falls_back_to_txt() {
         FakeHttpClient http = new FakeHttpClient(Map.of(
                 URL_XML, success(EMPTY_XML_BODY),
                 URL_HTML, success("ignored".getBytes(StandardCharsets.UTF_8))));
@@ -81,7 +81,7 @@ class DocumentFetchServiceTest {
     }
 
     @Test
-    void txtErrorPageFallsBackToPdf() {
+    void txt_error_page_falls_back_to_pdf() {
         FakeHttpClient http = new FakeHttpClient(Map.of(
                 URL_XML, new HttpFetchResult.Failure(ErrorKind.PERMANENT, 404, "not found"),
                 URL_HTML, success("error page".getBytes(StandardCharsets.UTF_8)),
@@ -96,7 +96,7 @@ class DocumentFetchServiceTest {
     }
 
     @Test
-    void allRepresentationsFailRecordsRetryableError() {
+    void all_representations_fail_records_retryable_error() {
         FakeHttpClient http = new FakeHttpClient(Map.of(
                 URL_XML, new HttpFetchResult.Failure(ErrorKind.RETRYABLE, 500, "server error"),
                 URL_HTML, new HttpFetchResult.Failure(ErrorKind.PERMANENT, 404, "not found"),
@@ -114,7 +114,7 @@ class DocumentFetchServiceTest {
     }
 
     @Test
-    void allRepresentationsPermanentlyAbsentRecordsPermanentError() {
+    void all_representations_permanently_absent_records_permanent_error() {
         FakeHttpClient http = new FakeHttpClient(Map.of(
                 URL_XML, new HttpFetchResult.Failure(ErrorKind.PERMANENT, 404, "not found"),
                 URL_HTML, new HttpFetchResult.Failure(ErrorKind.PERMANENT, 404, "not found"),

@@ -17,7 +17,7 @@ import org.junit.jupiter.api.io.TempDir;
 class DiskDocumentCacheTest {
 
     @Test
-    void roundTripsBodyRepresentationAndCharset(@TempDir Path dir) {
+    void round_trips_body_representation_and_charset(@TempDir Path dir) {
         DiskDocumentCache cache = new DiskDocumentCache(dir);
         byte[] body = "COMPAÑÍA ESPAÑOLA".getBytes(StandardCharsets.ISO_8859_1);
         cache.put("BORME-A-2024-1-01", new CachedDocument(Representation.TXT, body, StandardCharsets.ISO_8859_1));
@@ -31,7 +31,7 @@ class DiskDocumentCacheTest {
     }
 
     @Test
-    void shardsEntriesIntoFoldersByIdParts(@TempDir Path dir) {
+    void shards_entries_into_folders_by_id_parts(@TempDir Path dir) {
         DiskDocumentCache cache = new DiskDocumentCache(dir);
         cache.put("BORME-A-2024-1-01",
                 new CachedDocument(Representation.XML, "x".getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8));
@@ -45,13 +45,13 @@ class DiskDocumentCacheTest {
     }
 
     @Test
-    void missReturnsEmpty(@TempDir Path dir) {
+    void miss_returns_empty(@TempDir Path dir) {
         DiskDocumentCache cache = new DiskDocumentCache(dir);
         assertTrue(cache.get("BORME-A-2099-999-99").isEmpty());
     }
 
     @Test
-    void putOverwritesExistingEntry(@TempDir Path dir) {
+    void put_overwrites_existing_entry(@TempDir Path dir) {
         DiskDocumentCache cache = new DiskDocumentCache(dir);
         cache.put("id", new CachedDocument(Representation.XML, "v1".getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8));
         cache.put("id", new CachedDocument(Representation.PDF, "v2".getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8));

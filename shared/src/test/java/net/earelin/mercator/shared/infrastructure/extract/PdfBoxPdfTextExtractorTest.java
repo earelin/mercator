@@ -18,7 +18,7 @@ class PdfBoxPdfTextExtractorTest {
     private final PdfBoxPdfTextExtractor extractor = new PdfBoxPdfTextExtractor();
 
     @Test
-    void extractsTextFromValidPdf() throws IOException {
+    void extracts_text_from_valid_pdf() throws IOException {
         byte[] pdf = singlePagePdf("Mercator PDF fallback sample text");
 
         Optional<String> text = extractor.extractText(pdf);
@@ -28,7 +28,7 @@ class PdfBoxPdfTextExtractorTest {
     }
 
     @Test
-    void returnsEmptyForCorruptPdf() {
+    void returns_empty_for_corrupt_pdf() {
         Optional<String> text = extractor.extractText("this is not a pdf".getBytes(StandardCharsets.UTF_8));
         assertTrue(text.isEmpty());
     }
