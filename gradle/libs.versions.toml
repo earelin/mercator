@@ -5,6 +5,8 @@ slf4j          = "2.0.16"
 logback        = "1.5.12"
 flyway         = "10.21.0"
 picocli        = "4.7.6"
+pdfbox         = "3.0.7"
+jsoup          = "1.21.1"
 
 [libraries]
 junit-jupiter           = { module = "org.junit.jupiter:junit-jupiter",              version.ref = "junit-jupiter" }
@@ -15,6 +17,8 @@ logback-classic         = { module = "ch.qos.logback:logback-classic",          
 flyway-core             = { module = "org.flywaydb:flyway-core",                     version.ref = "flyway" }
 flyway-postgresql       = { module = "org.flywaydb:flyway-database-postgresql",      version.ref = "flyway" }
 picocli                 = { module = "info.picocli:picocli",                         version.ref = "picocli" }
+pdfbox                  = { module = "org.apache.pdfbox:pdfbox",                       version.ref = "pdfbox" }
+jsoup                   = { module = "org.jsoup:jsoup",                                version.ref = "jsoup" }
 
 [plugins]
 micronaut-application = { id = "io.micronaut.application", version = "5.0.0" }
