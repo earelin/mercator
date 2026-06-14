@@ -37,6 +37,12 @@ about each.
   never presents a person-based link as an established fact — both to avoid conflating
   individuals and to meet the GDPR accuracy obligation
   ([Spec 7](07-data-protection.md)).
+- **Historical vs. current matches.** Because shared-administrator and shared-address links
+  span the full history by default, each link is reported with whether it is a
+  **current/overlapping** match (shared at the same time) or a **historical** one (connected
+  only across non-overlapping intervals). A historical match **carries lower confidence** — it
+  is weaker evidence of an active relationship — and this temporal flag is surfaced alongside
+  the link so a past coincidence is never reported as a live connection.
 
 ## Boundaries
 

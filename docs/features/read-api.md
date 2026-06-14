@@ -19,7 +19,8 @@ person detail, and the entry points for link queries.
 - **Person detail** — `GET /api/v1/persons/{id}` → the companies the person is/was associated
   with and the roles, each annotated with **confidence** where identity is probabilistic.
 - **Link entry points** — endpoints that delegate to [link-queries](link-queries.md)
-  (shared admin, shared address, multi-hop).
+  (shared admin, shared address, multi-hop); link DTOs carry the **temporal flag**
+  (current/overlapping vs. historical) and confidence, reduced for historical matches.
 - **Authentication** — a Micronaut security filter requires a valid **API key** (`X-API-Key`)
   on all data endpoints **in production**, returning `401` when missing/invalid. The filter is
   **enabled by default and disabled only in the local/dev environment** (fail-closed); accepted

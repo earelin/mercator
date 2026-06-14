@@ -24,9 +24,18 @@ multi-hop connections — implemented as indexed joins and recursive CTEs inside
 - **Multi-hop connection** — `WITH RECURSIVE` traversal of the company⇄person graph, bounded
   by a hop limit, with **cycle detection** via a carried path array; returns the path
   between two companies (or all companies within N hops of one).
+- **Temporal classification** — every shared-administrator and shared-address link is
+  tagged with whether it is a **current/overlapping** match (the two companies shared the
+  administrator or address at the same time) or a **historical** match (the link exists only
+  across non-overlapping intervals — they were connected at different times). The result
+  reports this `temporal` flag explicitly so consumers never mistake a past coincidence for a
+  live connection.
 - **Confidence propagation** — any link routed through a person is a **scored candidate**,
   not a fact ([ADR-0009](../architecture/0009-probabilistic-person-resolution.md)); the
-  result carries the aggregated confidence.
+  result carries the aggregated confidence. **A historical (non-overlapping) match lowers
+  the reported confidence** relative to an otherwise-identical current/overlapping match —
+  weaker evidence of an active relationship — and this penalty applies to both
+  person-derived links *and* the otherwise-deterministic shared-address link.
 
 ## Data flow
 
@@ -38,7 +47,8 @@ flowchart LR
 ## Inputs / outputs
 
 - **Input:** a company or person id, optional hop limit / date filter.
-- **Output:** linked companies/people with link type, period and confidence.
+- **Output:** linked companies/people with link type, period, a **temporal flag**
+  (current/overlapping vs. historical) and confidence (reduced for historical matches).
 
 ## Edge cases
 
@@ -51,6 +61,8 @@ flowchart LR
 ## Acceptance criteria
 
 - Shared-admin and shared-address queries return correct, deduplicated links with periods.
+- Each shared-admin/shared-address link is tagged current/overlapping vs. historical, and a
+  historical match reports lower confidence than an equivalent current one.
 - Multi-hop traversal terminates with cycle detection and respects the hop limit.
 - Person-derived links carry confidence and are never labelled as certain.
 
@@ -59,6 +71,8 @@ flowchart LR
 - [ ] Shared-administrator query (full-history self-join, optional overlap constraint) + confidence.
 - [ ] Shared-registered-address query.
 - [ ] Bounded multi-hop recursive CTE with path-array cycle detection.
-- [ ] Confidence aggregation across a path.
+- [ ] Temporal classification (current/overlapping vs. historical) tagged on shared-admin
+      and shared-address links.
+- [ ] Confidence aggregation across a path, including the historical-match penalty.
 - [ ] Query performance benchmarks + the AGE escalation decision gate.
 - [ ] API endpoints exposing the above (with [read-api](read-api.md)).
