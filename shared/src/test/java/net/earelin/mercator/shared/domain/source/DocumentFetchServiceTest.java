@@ -1,9 +1,6 @@
 package net.earelin.mercator.shared.domain.source;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -45,11 +42,11 @@ class DocumentFetchServiceTest {
         FetchOutcome outcome = service.fetch(DESCRIPTOR, CONTEXT);
 
         FetchedDocument doc = assertFetched(outcome);
-        assertEquals(Representation.XML, doc.representation());
-        assertEquals(2, doc.paragraphs().size());
-        assertTrue(cache.store.containsKey("BORME-A-2024-1-01"));
-        assertEquals(1, bormeLog.entries.size());
-        assertEquals(BormeLogStatus.FETCHED, bormeLog.entries.get(0).status());
+        assertThat(doc.representation()).isEqualTo(Representation.XML);
+        assertThat(doc.paragraphs()).hasSize(2);
+        assertThat(cache.store).containsKey("BORME-A-2024-1-01");
+        assertThat(bormeLog.entries).hasSize(1);
+        assertThat(bormeLog.entries.get(0).status()).isEqualTo(BormeLogStatus.FETCHED);
     }
 
     @Test
@@ -61,9 +58,9 @@ class DocumentFetchServiceTest {
         FetchOutcome outcome = service.fetch(DESCRIPTOR, CONTEXT);
 
         FetchedDocument doc = assertFetched(outcome);
-        assertEquals(Representation.XML, doc.representation());
-        assertEquals(0, http.calls, "cache hit must not touch the network");
-        assertTrue(bormeLog.entries.isEmpty(), "cache hit should not re-record borme_log");
+        assertThat(doc.representation()).isEqualTo(Representation.XML);
+        assertThat(http.calls).as("cache hit must not touch the network").isZero();
+        assertThat(bormeLog.entries).as("cache hit should not re-record borme_log").isEmpty();
     }
 
     @Test
@@ -78,10 +75,10 @@ class DocumentFetchServiceTest {
         FetchOutcome outcome = service.fetch(DESCRIPTOR, CONTEXT);
 
         FetchedDocument doc = assertFetched(outcome);
-        assertEquals(Representation.XML, doc.representation());
-        assertEquals(1, http.calls, "corrupt cache entry must trigger a re-fetch");
+        assertThat(doc.representation()).isEqualTo(Representation.XML);
+        assertThat(http.calls).as("corrupt cache entry must trigger a re-fetch").isEqualTo(1);
         // The good body replaces the corrupt one in the cache.
-        assertArrayEquals(XML_BODY, cache.store.get("BORME-A-2024-1-01").body());
+        assertThat(cache.store.get("BORME-A-2024-1-01").body()).isEqualTo(XML_BODY);
     }
 
     @Test
@@ -94,9 +91,9 @@ class DocumentFetchServiceTest {
         FetchOutcome outcome = service.fetch(DESCRIPTOR, CONTEXT);
 
         FetchedDocument doc = assertFetched(outcome);
-        assertEquals(Representation.TXT, doc.representation());
-        assertEquals("stripped txt body", doc.rawBody());
-        assertEquals(Representation.TXT, cache.store.get("BORME-A-2024-1-01").representation());
+        assertThat(doc.representation()).isEqualTo(Representation.TXT);
+        assertThat(doc.rawBody()).isEqualTo("stripped txt body");
+        assertThat(cache.store.get("BORME-A-2024-1-01").representation()).isEqualTo(Representation.TXT);
     }
 
     @Test
@@ -110,8 +107,8 @@ class DocumentFetchServiceTest {
         FetchOutcome outcome = service.fetch(DESCRIPTOR, CONTEXT);
 
         FetchedDocument doc = assertFetched(outcome);
-        assertEquals(Representation.PDF, doc.representation());
-        assertEquals("pdf text", doc.rawBody());
+        assertThat(doc.representation()).isEqualTo(Representation.PDF);
+        assertThat(doc.rawBody()).isEqualTo("pdf text");
     }
 
     @Test
@@ -122,14 +119,12 @@ class DocumentFetchServiceTest {
                 URL_PDF, new HttpFetchResult.Failure(ErrorKind.PERMANENT, 404, "not found")));
         DocumentFetchService service = service(http, html(Optional.empty()), pdf(Optional.empty()));
 
-        FetchOutcome outcome = service.fetch(DESCRIPTOR, CONTEXT);
-
-        FetchOutcome.Failed failed = assertInstanceOf(FetchOutcome.Failed.class, outcome);
-        assertEquals(ErrorKind.RETRYABLE, failed.error().kind());
-        assertEquals(1, bormeLog.entries.size());
+        FetchOutcome.Failed failed = assertFailed(service.fetch(DESCRIPTOR, CONTEXT));
+        assertThat(failed.error().kind()).isEqualTo(ErrorKind.RETRYABLE);
+        assertThat(bormeLog.entries).hasSize(1);
         BormeLogEntry entry = bormeLog.entries.get(0);
-        assertEquals(BormeLogStatus.ERROR, entry.status());
-        assertEquals(ErrorKind.RETRYABLE, entry.errorKind());
+        assertThat(entry.status()).isEqualTo(BormeLogStatus.ERROR);
+        assertThat(entry.errorKind()).isEqualTo(ErrorKind.RETRYABLE);
     }
 
     @Test
@@ -140,9 +135,9 @@ class DocumentFetchServiceTest {
                 URL_PDF, new HttpFetchResult.Failure(ErrorKind.PERMANENT, 404, "not found")));
         DocumentFetchService service = service(http, html(Optional.empty()), pdf(Optional.empty()));
 
-        FetchOutcome.Failed failed = assertInstanceOf(FetchOutcome.Failed.class, service.fetch(DESCRIPTOR, CONTEXT));
-        assertEquals(ErrorKind.PERMANENT, failed.error().kind());
-        assertEquals(ErrorKind.PERMANENT, bormeLog.entries.get(0).errorKind());
+        FetchOutcome.Failed failed = assertFailed(service.fetch(DESCRIPTOR, CONTEXT));
+        assertThat(failed.error().kind()).isEqualTo(ErrorKind.PERMANENT);
+        assertThat(bormeLog.entries.get(0).errorKind()).isEqualTo(ErrorKind.PERMANENT);
     }
 
     // --- helpers / fakes -------------------------------------------------------------------
@@ -152,7 +147,13 @@ class DocumentFetchServiceTest {
     }
 
     private static FetchedDocument assertFetched(FetchOutcome outcome) {
-        return assertInstanceOf(FetchOutcome.Fetched.class, outcome).document();
+        assertThat(outcome).isInstanceOf(FetchOutcome.Fetched.class);
+        return ((FetchOutcome.Fetched) outcome).document();
+    }
+
+    private static FetchOutcome.Failed assertFailed(FetchOutcome outcome) {
+        assertThat(outcome).isInstanceOf(FetchOutcome.Failed.class);
+        return (FetchOutcome.Failed) outcome;
     }
 
     private static HttpFetchResult success(byte[] body) {

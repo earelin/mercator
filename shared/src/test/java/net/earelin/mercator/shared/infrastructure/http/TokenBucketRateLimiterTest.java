@@ -1,8 +1,7 @@
 package net.earelin.mercator.shared.infrastructure.http;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +27,7 @@ class TokenBucketRateLimiterTest {
         limiter.acquire();
         limiter.acquire();
 
-        assertEquals(List.of(100_000_000L, 100_000_000L), sleeps);
+        assertThat(sleeps).containsExactly(100_000_000L, 100_000_000L);
     }
 
     @Test
@@ -44,11 +43,11 @@ class TokenBucketRateLimiterTest {
         now[0] += 500_000_000L; // caller already waited 500ms before the next request
         limiter.acquire();
 
-        assertTrue(sleeps.isEmpty(), "no throttling needed when caller is already slow");
+        assertThat(sleeps).as("no throttling needed when caller is already slow").isEmpty();
     }
 
     @Test
     void rejects_non_positive_rate() {
-        assertThrows(IllegalArgumentException.class, () -> new TokenBucketRateLimiter(0.0));
+        assertThatIllegalArgumentException().isThrownBy(() -> new TokenBucketRateLimiter(0.0));
     }
 }

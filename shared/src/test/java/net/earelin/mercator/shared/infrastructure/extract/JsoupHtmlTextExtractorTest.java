@@ -1,7 +1,6 @@
 package net.earelin.mercator.shared.infrastructure.extract;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
@@ -23,10 +22,11 @@ class JsoupHtmlTextExtractorTest {
 
         Optional<String> text = extractor.extractText(html.getBytes(StandardCharsets.UTF_8));
 
-        assertTrue(text.isPresent());
-        assertTrue(text.get().contains("COMPAÑÍA ESPAÑOLA"), text.get());
-        assertFalse(text.get().contains("Inicio Buscar"), "site chrome must be stripped");
-        assertFalse(text.get().contains("Agencia Estatal"), "footer must be stripped");
+        assertThat(text).isPresent();
+        assertThat(text.get())
+                .contains("COMPAÑÍA ESPAÑOLA")
+                .as("site chrome must be stripped").doesNotContain("Inicio Buscar")
+                .as("footer must be stripped").doesNotContain("Agencia Estatal");
     }
 
     @Test
@@ -36,12 +36,12 @@ class JsoupHtmlTextExtractorTest {
 
         Optional<String> text = extractor.extractText(html.getBytes(StandardCharsets.UTF_8));
 
-        assertTrue(text.isEmpty(), "an error page must not be treated as a document");
+        assertThat(text).as("an error page must not be treated as a document").isEmpty();
     }
 
     @Test
     void returns_empty_for_trivial_content() {
         String html = "<html><body><div id=\"textoxslt\">x</div></body></html>";
-        assertTrue(extractor.extractText(html.getBytes(StandardCharsets.UTF_8)).isEmpty());
+        assertThat(extractor.extractText(html.getBytes(StandardCharsets.UTF_8))).isEmpty();
     }
 }

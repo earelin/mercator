@@ -1,10 +1,7 @@
 package net.earelin.mercator.shared.domain.source;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,29 +19,28 @@ class XmlDocumentParserTest {
 
         XmlDocumentParser.ParsedXml parsed = parser.parse(body);
 
-        assertEquals(StandardCharsets.UTF_8, parsed.charset());
-        assertFalse(parsed.isEmpty());
+        assertThat(parsed.charset()).isEqualTo(StandardCharsets.UTF_8);
+        assertThat(parsed.isEmpty()).isFalse();
 
         DocumentMetadata meta = parsed.metadata();
-        assertNotNull(meta);
-        assertEquals("BORME-A-2024-1-01", meta.identificador());
-        assertEquals("A", meta.seccion());
-        assertEquals(LocalDate.of(2024, 1, 2), meta.pubDate());
-        assertEquals(3, meta.pages());
-        assertEquals(
-                "https://www.boe.es/borme/dias/2024/01/02/pdfs/BORME-A-2024-1-01.pdf",
-                meta.urlPdf().toString());
+        assertThat(meta).isNotNull();
+        assertThat(meta.identificador()).isEqualTo("BORME-A-2024-1-01");
+        assertThat(meta.seccion()).isEqualTo("A");
+        assertThat(meta.pubDate()).isEqualTo(LocalDate.of(2024, 1, 2));
+        assertThat(meta.pages()).isEqualTo(3);
+        assertThat(meta.urlPdf())
+                .hasToString("https://www.boe.es/borme/dias/2024/01/02/pdfs/BORME-A-2024-1-01.pdf");
         // Spanish characters survive the round-trip.
-        assertTrue(meta.titulo().contains("ARAÑÓN"), meta.titulo());
+        assertThat(meta.titulo()).contains("ARAÑÓN");
 
         // The <p class="otro"> is ignored; only articulo/parrafo are kept, in order.
-        assertEquals(2, parsed.paragraphs().size());
-        assertEquals(ParagraphClass.ARTICULO, parsed.paragraphs().get(0).styleClass());
-        assertTrue(parsed.paragraphs().get(0).text().contains("COMPAÑÍA ESPAÑOLA"));
-        assertEquals(ParagraphClass.PARRAFO, parsed.paragraphs().get(1).styleClass());
-        assertTrue(parsed.paragraphs().get(1).text().contains("Constitución"));
+        assertThat(parsed.paragraphs()).hasSize(2);
+        assertThat(parsed.paragraphs().get(0).styleClass()).isEqualTo(ParagraphClass.ARTICULO);
+        assertThat(parsed.paragraphs().get(0).text()).contains("COMPAÑÍA ESPAÑOLA");
+        assertThat(parsed.paragraphs().get(1).styleClass()).isEqualTo(ParagraphClass.PARRAFO);
+        assertThat(parsed.paragraphs().get(1).text()).contains("Constitución");
 
-        assertTrue(parsed.rawBody().contains("COMPAÑÍA ESPAÑOLA"));
+        assertThat(parsed.rawBody()).contains("COMPAÑÍA ESPAÑOLA");
     }
 
     @Test
@@ -56,19 +52,19 @@ class XmlDocumentParserTest {
 
         XmlDocumentParser.ParsedXml parsed = parser.parse(body);
 
-        assertTrue(parsed.isEmpty());
-        assertNotNull(parsed.metadata());
+        assertThat(parsed.isEmpty()).isTrue();
+        assertThat(parsed.metadata()).isNotNull();
     }
 
     @Test
     void throws_on_malformed_xml() {
         byte[] body = "<documento><texto><p class=\"parrafo\">unclosed".getBytes(StandardCharsets.UTF_8);
-        assertThrows(XmlParseException.class, () -> parser.parse(body));
+        assertThatExceptionOfType(XmlParseException.class).isThrownBy(() -> parser.parse(body));
     }
 
     private static byte[] fixture(String resource) throws IOException {
         try (InputStream in = XmlDocumentParserTest.class.getResourceAsStream(resource)) {
-            assertNotNull(in, "missing test fixture " + resource);
+            assertThat(in).as("missing test fixture %s", resource).isNotNull();
             return in.readAllBytes();
         }
     }

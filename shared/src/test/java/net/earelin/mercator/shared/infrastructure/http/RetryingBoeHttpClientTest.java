@@ -1,8 +1,6 @@
 package net.earelin.mercator.shared.infrastructure.http;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.net.URI;
@@ -27,41 +25,37 @@ class RetryingBoeHttpClientTest {
     @Test
     void returns_body_on_200() {
         FakeTransport transport = new FakeTransport().enqueue(ok("hello"));
-        HttpFetchResult result = client(transport, 5).get(URI_UNDER_TEST);
+        HttpFetchResult.Success success = asSuccess(client(transport, 5).get(URI_UNDER_TEST));
 
-        HttpFetchResult.Success success = assertInstanceOf(HttpFetchResult.Success.class, result);
-        assertEquals("hello", new String(success.body(), StandardCharsets.UTF_8));
-        assertTrue(sleeps.isEmpty());
+        assertThat(new String(success.body(), StandardCharsets.UTF_8)).isEqualTo("hello");
+        assertThat(sleeps).isEmpty();
     }
 
     @Test
     void empty_body_is_permanent_failure() {
         FakeTransport transport = new FakeTransport().enqueue(status(200, new byte[0]));
-        HttpFetchResult.Failure failure =
-                assertInstanceOf(HttpFetchResult.Failure.class, client(transport, 5).get(URI_UNDER_TEST));
-        assertEquals(ErrorKind.PERMANENT, failure.kind());
-        assertEquals(200, failure.statusCode());
+        HttpFetchResult.Failure failure = asFailure(client(transport, 5).get(URI_UNDER_TEST));
+        assertThat(failure.kind()).isEqualTo(ErrorKind.PERMANENT);
+        assertThat(failure.statusCode()).isEqualTo(200);
     }
 
     @Test
     void not_found_is_permanent_and_not_retried() {
         FakeTransport transport = new FakeTransport().enqueue(status(404, new byte[0]));
-        HttpFetchResult.Failure failure =
-                assertInstanceOf(HttpFetchResult.Failure.class, client(transport, 5).get(URI_UNDER_TEST));
-        assertEquals(ErrorKind.PERMANENT, failure.kind());
-        assertEquals(404, failure.statusCode());
-        assertEquals(1, transport.served);
-        assertTrue(sleeps.isEmpty());
+        HttpFetchResult.Failure failure = asFailure(client(transport, 5).get(URI_UNDER_TEST));
+        assertThat(failure.kind()).isEqualTo(ErrorKind.PERMANENT);
+        assertThat(failure.statusCode()).isEqualTo(404);
+        assertThat(transport.served).isEqualTo(1);
+        assertThat(sleeps).isEmpty();
     }
 
     @Test
     void other_client_error_is_permanent_and_not_retried() {
         FakeTransport transport = new FakeTransport().enqueue(status(403, new byte[0]));
-        HttpFetchResult.Failure failure =
-                assertInstanceOf(HttpFetchResult.Failure.class, client(transport, 5).get(URI_UNDER_TEST));
-        assertEquals(ErrorKind.PERMANENT, failure.kind());
-        assertEquals(403, failure.statusCode());
-        assertEquals(1, transport.served);
+        HttpFetchResult.Failure failure = asFailure(client(transport, 5).get(URI_UNDER_TEST));
+        assertThat(failure.kind()).isEqualTo(ErrorKind.PERMANENT);
+        assertThat(failure.statusCode()).isEqualTo(403);
+        assertThat(transport.served).isEqualTo(1);
     }
 
     @Test
@@ -69,9 +63,9 @@ class RetryingBoeHttpClientTest {
         FakeTransport transport = new FakeTransport().enqueue(status(429, new byte[0])).enqueue(ok("ok"));
         HttpFetchResult result = client(transport, 5).get(URI_UNDER_TEST);
 
-        assertInstanceOf(HttpFetchResult.Success.class, result);
-        assertEquals(2, transport.served);
-        assertEquals(1, sleeps.size());
+        assertThat(result).isInstanceOf(HttpFetchResult.Success.class);
+        assertThat(transport.served).isEqualTo(2);
+        assertThat(sleeps).hasSize(1);
     }
 
     @Test
@@ -80,8 +74,8 @@ class RetryingBoeHttpClientTest {
                 .enqueue(new HttpResponseBytes(503, new byte[0], Map.of("Retry-After", List.of("2"))))
                 .enqueue(ok("ok"));
 
-        assertInstanceOf(HttpFetchResult.Success.class, client(transport, 5).get(URI_UNDER_TEST));
-        assertEquals(List.of(2000L), sleeps, "Retry-After of 2s overrides computed backoff");
+        assertThat(client(transport, 5).get(URI_UNDER_TEST)).isInstanceOf(HttpFetchResult.Success.class);
+        assertThat(sleeps).as("Retry-After of 2s overrides computed backoff").containsExactly(2000L);
     }
 
     @Test
@@ -90,20 +84,19 @@ class RetryingBoeHttpClientTest {
                 .enqueue(status(500, new byte[0]))
                 .enqueue(status(500, new byte[0]))
                 .enqueue(status(500, new byte[0]));
-        HttpFetchResult.Failure failure =
-                assertInstanceOf(HttpFetchResult.Failure.class, client(transport, 3).get(URI_UNDER_TEST));
+        HttpFetchResult.Failure failure = asFailure(client(transport, 3).get(URI_UNDER_TEST));
 
-        assertEquals(ErrorKind.RETRYABLE, failure.kind());
-        assertEquals(500, failure.statusCode());
-        assertEquals(3, transport.served);
-        assertEquals(2, sleeps.size(), "3 attempts → 2 backoffs");
+        assertThat(failure.kind()).isEqualTo(ErrorKind.RETRYABLE);
+        assertThat(failure.statusCode()).isEqualTo(500);
+        assertThat(transport.served).isEqualTo(3);
+        assertThat(sleeps).as("3 attempts → 2 backoffs").hasSize(2);
     }
 
     @Test
     void retries_network_error_then_succeeds() {
         FakeTransport transport = new FakeTransport().enqueue(new IOException("connection reset")).enqueue(ok("ok"));
-        assertInstanceOf(HttpFetchResult.Success.class, client(transport, 5).get(URI_UNDER_TEST));
-        assertEquals(1, sleeps.size());
+        assertThat(client(transport, 5).get(URI_UNDER_TEST)).isInstanceOf(HttpFetchResult.Success.class);
+        assertThat(sleeps).hasSize(1);
     }
 
     @Test
@@ -111,10 +104,9 @@ class RetryingBoeHttpClientTest {
         FakeTransport transport = new FakeTransport()
                 .enqueue(new IOException("timeout"))
                 .enqueue(new IOException("timeout"));
-        HttpFetchResult.Failure failure =
-                assertInstanceOf(HttpFetchResult.Failure.class, client(transport, 2).get(URI_UNDER_TEST));
-        assertEquals(ErrorKind.RETRYABLE, failure.kind());
-        assertEquals(0, failure.statusCode());
+        HttpFetchResult.Failure failure = asFailure(client(transport, 2).get(URI_UNDER_TEST));
+        assertThat(failure.kind()).isEqualTo(ErrorKind.RETRYABLE);
+        assertThat(failure.statusCode()).isZero();
     }
 
     // --- helpers ---------------------------------------------------------------------------
@@ -127,6 +119,16 @@ class RetryingBoeHttpClientTest {
                 Duration.ofSeconds(10), Duration.ofSeconds(30), 1024L);
         RetryingBoeHttpClient.Delayer delayer = sleeps::add;
         return new RetryingBoeHttpClient(transport, () -> { }, config, delayer, () -> 1.0);
+    }
+
+    private static HttpFetchResult.Success asSuccess(HttpFetchResult result) {
+        assertThat(result).isInstanceOf(HttpFetchResult.Success.class);
+        return (HttpFetchResult.Success) result;
+    }
+
+    private static HttpFetchResult.Failure asFailure(HttpFetchResult result) {
+        assertThat(result).isInstanceOf(HttpFetchResult.Failure.class);
+        return (HttpFetchResult.Failure) result;
     }
 
     private static HttpResponseBytes ok(String body) {

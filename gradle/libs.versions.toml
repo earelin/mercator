@@ -10,6 +10,8 @@ jsoup          = "1.21.1"
 checkstyle     = "13.4.2"
 pmd            = "7.24.0"
 cpd-plugin     = "3.5"
+assertj        = "3.27.7"
+assertj-db     = "3.0.2"
 
 [libraries]
 junit-jupiter           = { module = "org.junit.jupiter:junit-jupiter",              version.ref = "junit-jupiter" }
@@ -22,6 +24,8 @@ flyway-postgresql       = { module = "org.flywaydb:flyway-database-postgresql", 
 picocli                 = { module = "info.picocli:picocli",                         version.ref = "picocli" }
 pdfbox                  = { module = "org.apache.pdfbox:pdfbox",                       version.ref = "pdfbox" }
 jsoup                   = { module = "org.jsoup:jsoup",                                version.ref = "jsoup" }
+assertj-core            = { module = "org.assertj:assertj-core",                       version.ref = "assertj" }
+assertj-db              = { module = "org.assertj:assertj-db",                         version.ref = "assertj-db" }
 
 [plugins]
 micronaut-application = { id = "io.micronaut.application", version = "5.0.0" }

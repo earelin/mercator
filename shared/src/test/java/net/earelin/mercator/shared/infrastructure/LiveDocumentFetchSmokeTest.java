@@ -1,8 +1,6 @@
 package net.earelin.mercator.shared.infrastructure;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.net.URI;
@@ -13,6 +11,7 @@ import net.earelin.mercator.shared.domain.source.DocumentDescriptor;
 import net.earelin.mercator.shared.domain.source.DocumentFetchService;
 import net.earelin.mercator.shared.domain.source.FetchContext;
 import net.earelin.mercator.shared.domain.source.FetchOutcome;
+import net.earelin.mercator.shared.domain.source.FetchedDocument;
 import net.earelin.mercator.shared.domain.source.Representation;
 import net.earelin.mercator.shared.domain.source.SourcePath;
 import net.earelin.mercator.shared.domain.source.XmlDocumentParser;
@@ -59,15 +58,16 @@ class LiveDocumentFetchSmokeTest {
         FetchContext context = new FetchContext(LocalDate.of(2024, 1, 2), SourcePath.BACKFILL);
 
         FetchOutcome first = service.fetch(descriptor, context);
-        var fetched = assertInstanceOf(FetchOutcome.Fetched.class, first);
-        assertEquals(Representation.XML, fetched.document().representation());
-        assertTrue(fetched.document().rawBody().contains("texto") || !fetched.document().paragraphs().isEmpty());
+        assertThat(first).isInstanceOf(FetchOutcome.Fetched.class);
+        FetchedDocument document = ((FetchOutcome.Fetched) first).document();
+        assertThat(document.representation()).isEqualTo(Representation.XML);
+        assertThat(document.rawBody().contains("texto") || !document.paragraphs().isEmpty()).isTrue();
         int requestsAfterFirst = transport.gets.get();
-        assertTrue(requestsAfterFirst >= 1);
+        assertThat(requestsAfterFirst).isGreaterThanOrEqualTo(1);
 
         FetchOutcome second = service.fetch(descriptor, context);
-        assertInstanceOf(FetchOutcome.Fetched.class, second);
-        assertEquals(requestsAfterFirst, transport.gets.get(), "cache hit must issue zero new requests");
+        assertThat(second).isInstanceOf(FetchOutcome.Fetched.class);
+        assertThat(transport.gets.get()).as("cache hit must issue zero new requests").isEqualTo(requestsAfterFirst);
     }
 
     private static final class CountingTransport implements HttpTransport {

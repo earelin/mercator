@@ -1,8 +1,7 @@
 package net.earelin.mercator.shared.infrastructure.http;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIOException;
 
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -27,9 +26,9 @@ class JdkHttpTransportTest {
 
             HttpResponseBytes response = transport.get(baseUri(server), Map.of());
 
-            assertEquals(200, response.statusCode());
-            assertArrayEquals(payload, response.body());
-            assertEquals("yes", response.firstHeader("X-Test").orElseThrow());
+            assertThat(response.statusCode()).isEqualTo(200);
+            assertThat(response.body()).isEqualTo(payload);
+            assertThat(response.firstHeader("X-Test")).contains("yes");
         } finally {
             server.stop(0);
         }
@@ -42,7 +41,7 @@ class JdkHttpTransportTest {
             JdkHttpTransport transport = new JdkHttpTransport(config(100)); // cap below body size
             URI uri = baseUri(server);
 
-            assertThrows(IOException.class, () -> transport.get(uri, Map.of()));
+            assertThatIOException().isThrownBy(() -> transport.get(uri, Map.of()));
         } finally {
             server.stop(0);
         }

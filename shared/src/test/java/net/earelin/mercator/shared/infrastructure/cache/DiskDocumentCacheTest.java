@@ -1,12 +1,9 @@
 package net.earelin.mercator.shared.infrastructure.cache;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import java.nio.file.Files;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 import net.earelin.mercator.shared.domain.source.CachedDocument;
@@ -24,10 +21,10 @@ class DiskDocumentCacheTest {
 
         Optional<CachedDocument> read = cache.get("BORME-A-2024-1-01");
 
-        assertTrue(read.isPresent());
-        assertEquals(Representation.TXT, read.get().representation());
-        assertEquals(StandardCharsets.ISO_8859_1, read.get().charset());
-        assertArrayEquals(body, read.get().body());
+        assertThat(read).isPresent();
+        assertThat(read.get().representation()).isEqualTo(Representation.TXT);
+        assertThat(read.get().charset()).isEqualTo(StandardCharsets.ISO_8859_1);
+        assertThat(read.get().body()).isEqualTo(body);
     }
 
     @Test
@@ -38,16 +35,16 @@ class DiskDocumentCacheTest {
 
         // All-but-last id parts become nested folders; the full id is the leaf filename.
         Path leaf = dir.resolve("BORME").resolve("A").resolve("2024").resolve("1");
-        assertTrue(Files.isRegularFile(leaf.resolve("BORME-A-2024-1-01.body")));
-        assertTrue(Files.isRegularFile(leaf.resolve("BORME-A-2024-1-01.meta")));
+        assertThat(leaf.resolve("BORME-A-2024-1-01.body")).isRegularFile();
+        assertThat(leaf.resolve("BORME-A-2024-1-01.meta")).isRegularFile();
         // Not dumped flat in the cache root.
-        assertFalse(Files.exists(dir.resolve("BORME-A-2024-1-01.body")));
+        assertThat(dir.resolve("BORME-A-2024-1-01.body")).doesNotExist();
     }
 
     @Test
     void miss_returns_empty(@TempDir Path dir) {
         DiskDocumentCache cache = new DiskDocumentCache(dir);
-        assertTrue(cache.get("BORME-A-2099-999-99").isEmpty());
+        assertThat(cache.get("BORME-A-2099-999-99")).isEmpty();
     }
 
     @Test
@@ -59,7 +56,7 @@ class DiskDocumentCacheTest {
         Path meta = dir.resolve("BORME").resolve("A").resolve("2024").resolve("1").resolve("BORME-A-2024-1-01.meta");
         Files.writeString(meta, "XML\n"); // charset line missing
 
-        assertTrue(cache.get("BORME-A-2024-1-01").isEmpty());
+        assertThat(cache.get("BORME-A-2024-1-01")).isEmpty();
     }
 
     @Test
@@ -71,7 +68,7 @@ class DiskDocumentCacheTest {
         Path meta = dir.resolve("BORME").resolve("A").resolve("2024").resolve("1").resolve("BORME-A-2024-1-01.meta");
         Files.writeString(meta, "NOT_A_REPRESENTATION\nUTF-8\n");
 
-        assertTrue(cache.get("BORME-A-2024-1-01").isEmpty());
+        assertThat(cache.get("BORME-A-2024-1-01")).isEmpty();
     }
 
     @Test
@@ -81,7 +78,7 @@ class DiskDocumentCacheTest {
         cache.put("id", new CachedDocument(Representation.PDF, "v2".getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8));
 
         CachedDocument read = cache.get("id").orElseThrow();
-        assertEquals(Representation.PDF, read.representation());
-        assertArrayEquals("v2".getBytes(StandardCharsets.UTF_8), read.body());
+        assertThat(read.representation()).isEqualTo(Representation.PDF);
+        assertThat(read.body()).isEqualTo("v2".getBytes(StandardCharsets.UTF_8));
     }
 }

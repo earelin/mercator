@@ -1,6 +1,6 @@
 package net.earelin.mercator.shared.infrastructure.extract;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -23,14 +23,14 @@ class PdfBoxPdfTextExtractorTest {
 
         Optional<String> text = extractor.extractText(pdf);
 
-        assertTrue(text.isPresent());
-        assertTrue(text.get().contains("Mercator PDF fallback sample text"), text.get());
+        assertThat(text).isPresent();
+        assertThat(text.get()).contains("Mercator PDF fallback sample text");
     }
 
     @Test
     void returns_empty_for_corrupt_pdf() {
         Optional<String> text = extractor.extractText("this is not a pdf".getBytes(StandardCharsets.UTF_8));
-        assertTrue(text.isEmpty());
+        assertThat(text).isEmpty();
     }
 
     private static byte[] singlePagePdf(String body) throws IOException {
