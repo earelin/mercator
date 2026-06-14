@@ -123,13 +123,13 @@ flowchart LR
 
 ## Implementation issues
 
-- [ ] Migration: extensions + live tables (incl. `borme_act.inscripcion`/`doc_seq`,
+- [x] Migration: extensions + live tables (incl. `borme_act.inscripcion`/`doc_seq`,
       `company.suppressed`/`name_match_flag`, `person.suppressed`) + indexes + UNIQUE constraints.
-- [ ] Migration: `staging_act` + `borme_log` (status incl. SKIPPED, `error_kind`, `source_path`).
-- [ ] Migration: `act_correction` audit table (canonical target locator + resolved `target_act_id`).
-- [ ] Migration: `match_candidate` derived table + scoring columns.
-- [ ] Migration: `suppression` + `erasure_log` data-protection tables (independent of act rows).
-- [ ] Temporal-interval handling (close previous `valid_to` on new event/address).
-- [ ] Idempotency constraints (incl. `doc_seq` discriminator) + `ON CONFLICT DO NOTHING` patterns.
-- [ ] Migration tooling/runner (Flyway) wired into deployment ([ADR-0016](../architecture/0016-database-schema-migrations.md)).
-- [ ] Seed/reference data (province codes, role enum).
+- [x] Migration: `staging_act` + `borme_log` (status incl. SKIPPED, `error_kind`, `source_path`).
+- [x] Migration: `act_correction` audit table (canonical target locator + resolved `target_act_id`).
+- [x] Migration: `match_candidate` derived table + scoring columns.
+- [x] Migration: `suppression` + `erasure_log` data-protection tables (independent of act rows).
+- [x] Temporal-interval handling (close previous `valid_to` on new event/address).
+- [x] Idempotency constraints (incl. `doc_seq` discriminator) + `ON CONFLICT DO NOTHING` patterns.
+- [x] Migration tooling/runner (Flyway) wired into deployment ([ADR-0016](../architecture/0016-database-schema-migrations.md)).
+- [x] Seed/reference data (province codes, role enum).
