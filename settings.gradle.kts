@@ -1,4 +1,16 @@
-// Build with Gradle 9.5 (pinned via the wrapper: gradle/wrapper/gradle-wrapper.properties).
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+    }
+}
+
+// Build with Gradle 9.5.1 (pinned via the wrapper: gradle/wrapper/gradle-wrapper.properties).
 rootProject.name = "mercator"
 
 // Gradle multi-project: three subprojects.

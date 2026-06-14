@@ -4,12 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-**Pre-implementation.** This repository currently contains only documentation (`docs/`),
-the GPLv3 `LICENSE`, and `README.md`. There is no source code, build system, or tests yet.
+**Early implementation.** The Gradle multi-project build is bootstrapped (`shared`, `server`,
+`ingester`) but contains only scaffolding — no business logic yet.
 The specs, features and ADRs in `docs/` are the authoritative design and **must be read
 before writing code** — they define what to build and the constraints that govern it.
 
-When you add the first code, also add its build/lint/test commands to this file.
+## Build, lint and test commands
+
+```bash
+./gradlew build          # compile + test all subprojects
+./gradlew test           # run tests only
+./gradlew :server:run    # start the Micronaut server locally
+./gradlew check          # tests + any static analysis
+```
+
+The database must be running (`docker compose up -d`) before starting the server.
 
 ## What Mercator is
 

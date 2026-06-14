@@ -1,0 +1,20 @@
+[versions]
+junit-jupiter  = "5.11.4"
+postgresql     = "42.7.4"
+slf4j          = "2.0.16"
+logback        = "1.5.12"
+flyway         = "10.21.0"
+picocli        = "4.7.6"
+
+[libraries]
+junit-jupiter           = { module = "org.junit.jupiter:junit-jupiter",              version.ref = "junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+postgresql              = { module = "org.postgresql:postgresql",                     version.ref = "postgresql" }
+slf4j-api               = { module = "org.slf4j:slf4j-api",                          version.ref = "slf4j" }
+logback-classic         = { module = "ch.qos.logback:logback-classic",               version.ref = "logback" }
+flyway-core             = { module = "org.flywaydb:flyway-core",                     version.ref = "flyway" }
+flyway-postgresql       = { module = "org.flywaydb:flyway-database-postgresql",      version.ref = "flyway" }
+picocli                 = { module = "info.picocli:picocli",                         version.ref = "picocli" }
+
+[plugins]
+micronaut-application = { id = "io.micronaut.application", version = "5.0.0" }
