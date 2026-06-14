@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class DiskDocumentCache implements DocumentCache {
 
-    private static final Logger log = LoggerFactory.getLogger(DiskDocumentCache.class);
+    private static final Logger LOG = LoggerFactory.getLogger(DiskDocumentCache.class);
 
     private final Path cacheDir;
 
@@ -43,7 +43,7 @@ public final class DiskDocumentCache implements DocumentCache {
         try {
             List<String> meta = Files.readAllLines(metaPath, StandardCharsets.UTF_8);
             if (meta.size() < 2) {
-                log.warn("malformed cache meta for {}; treating as miss", bormeId);
+                LOG.warn("malformed cache meta for {}; treating as miss", bormeId);
                 return Optional.empty();
             }
             Representation representation = Representation.valueOf(meta.get(0).trim());
@@ -51,7 +51,7 @@ public final class DiskDocumentCache implements DocumentCache {
             byte[] body = Files.readAllBytes(bodyPath);
             return Optional.of(new CachedDocument(representation, body, charset));
         } catch (IOException | RuntimeException e) {
-            log.warn("could not read cache entry for {}; treating as miss: {}", bormeId, e.toString());
+            LOG.warn("could not read cache entry for {}; treating as miss: {}", bormeId, e.toString());
             return Optional.empty();
         }
     }
@@ -65,7 +65,7 @@ public final class DiskDocumentCache implements DocumentCache {
             writeAtomic(metaPath(bormeId), meta.getBytes(StandardCharsets.UTF_8));
         } catch (IOException e) {
             // Best-effort cache: a write failure just means the next run re-fetches.
-            log.warn("could not write cache entry for {}: {}", bormeId, e.toString());
+            LOG.warn("could not write cache entry for {}: {}", bormeId, e.toString());
         }
     }
 

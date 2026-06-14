@@ -13,16 +13,16 @@ import org.slf4j.LoggerFactory;
  */
 public final class LoggingBormeLog implements BormeLog {
 
-    private static final Logger log = LoggerFactory.getLogger(LoggingBormeLog.class);
+    private static final Logger LOG = LoggerFactory.getLogger(LoggingBormeLog.class);
 
     @Override
     public void record(BormeLogEntry entry) {
         if (entry.status() == BormeLogStatus.ERROR) {
-            log.warn("borme_log {} {} {} [{}] {}",
+            LOG.warn("borme_log {} {} {} [{}] {}",
                     entry.status(), entry.bormeId(), entry.sourcePath().dbValue(),
                     entry.errorKind(), entry.errorDetail());
         } else {
-            log.info("borme_log {} {} {}",
+            LOG.info("borme_log {} {} {}",
                     entry.status(), entry.bormeId(), entry.sourcePath().dbValue());
         }
     }

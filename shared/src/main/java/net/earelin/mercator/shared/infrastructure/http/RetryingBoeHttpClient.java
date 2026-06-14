@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class RetryingBoeHttpClient implements BoeHttpClient {
 
-    private static final Logger log = LoggerFactory.getLogger(RetryingBoeHttpClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(RetryingBoeHttpClient.class);
     private static final String ACCEPT =
             "application/xml, text/xml, text/html, application/pdf;q=0.9, */*;q=0.8";
 
@@ -146,7 +146,7 @@ public final class RetryingBoeHttpClient implements BoeHttpClient {
             try {
                 return Optional.of(java.time.Duration.ofSeconds(Long.parseLong(value.trim())));
             } catch (NumberFormatException e) {
-                log.debug("ignoring non-numeric Retry-After: {}", value);
+                LOG.debug("ignoring non-numeric Retry-After: {}", value);
                 return Optional.empty();
             }
         });

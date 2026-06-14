@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class JsoupHtmlTextExtractor implements HtmlTextExtractor {
 
-    private static final Logger log = LoggerFactory.getLogger(JsoupHtmlTextExtractor.class);
+    private static final Logger LOG = LoggerFactory.getLogger(JsoupHtmlTextExtractor.class);
 
     /** BOE renders the document body into this container; prefer it, then fall back. */
     private static final List<String> CONTENT_SELECTORS = List.of("#textoxslt", "div.documento", "main");
@@ -37,7 +37,7 @@ public final class JsoupHtmlTextExtractor implements HtmlTextExtractor {
             // null charset → jsoup auto-detects from the meta tag / BOM, falling back to UTF-8.
             doc = Jsoup.parse(new ByteArrayInputStream(body), null, "https://www.boe.es/");
         } catch (IOException e) {
-            log.warn("could not parse txt.php HTML: {}", e.toString());
+            LOG.warn("could not parse txt.php HTML: {}", e.toString());
             return Optional.empty();
         }
 

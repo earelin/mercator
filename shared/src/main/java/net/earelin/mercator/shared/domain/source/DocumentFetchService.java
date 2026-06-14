@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class DocumentFetchService implements DocumentSource {
 
-    private static final Logger log = LoggerFactory.getLogger(DocumentFetchService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(DocumentFetchService.class);
     private static final int MAX_ERROR_DETAIL = 1000;
 
     private final BoeHttpClient httpClient;
@@ -55,7 +55,7 @@ public final class DocumentFetchService implements DocumentSource {
 
         Optional<FetchedDocument> cached = fromCache(bormeId);
         if (cached.isPresent()) {
-            log.debug("cache hit for {} ({})", bormeId, cached.get().representation());
+            LOG.debug("cache hit for {} ({})", bormeId, cached.get().representation());
             return FetchOutcome.fetched(cached.get());
         }
 
@@ -74,7 +74,7 @@ public final class DocumentFetchService implements DocumentSource {
         }
 
         FetchError error = classify(failures);
-        log.warn("fetch gave up for {}: {} ({})", bormeId, error.detail(), error.kind());
+        LOG.warn("fetch gave up for {}: {} ({})", bormeId, error.detail(), error.kind());
         bormeLog.record(BormeLogEntry.error(bormeId, context.pubDate(), context.sourcePath(), error));
         return FetchOutcome.failed(error);
     }
@@ -88,7 +88,7 @@ public final class DocumentFetchService implements DocumentSource {
         try {
             return materialize(bormeId, cachedDoc.representation(), cachedDoc.body());
         } catch (RuntimeException e) {
-            log.warn("cached {} ({}) could not be re-materialised; re-fetching: {}",
+            LOG.warn("cached {} ({}) could not be re-materialised; re-fetching: {}",
                     bormeId, cachedDoc.representation(), e.toString());
             return Optional.empty();
         }

@@ -7,8 +7,9 @@
 #   3. Mermaid diagram syntax      -> @mermaid-js/mermaid-cli (mmdc)
 #   4. Docker Compose files        -> dclint (via npx)
 # And then:
-#   5. Gradle build                -> ./gradlew build
-#   6. SQL lint                    -> sqlfluff lint
+#   5. Gradle check (Checkstyle, CPD/duplication, tests) -> ./gradlew check
+#   6. Gradle build                -> ./gradlew build
+#   7. SQL lint                    -> sqlfluff lint
 #
 # Run it manually:        ./script/ci.sh
 # Skip external links:    CHECK_EXTERNAL=0 ./script/ci.sh
@@ -109,7 +110,15 @@ else
   err "npx not found"; fail=1
 fi
 
-# --- 5) Gradle build ------------------------------------------------------
+# --- 5) Gradle check (Checkstyle, CPD/duplication, tests) -----------------
+bold "Gradle check (./gradlew check)"
+if [ -f ./gradlew ]; then
+  if ./gradlew check; then ok "gradle check"; else err "gradle check failed (checkstyle/CPD/tests)"; fail=1; fi
+else
+  err "gradlew not found — run: gradle wrapper --gradle-version 9.5.1"; fail=1
+fi
+
+# --- 6) Gradle build ------------------------------------------------------
 bold "Gradle build (./gradlew build)"
 if [ -f ./gradlew ]; then
   if ./gradlew build; then ok "gradle build"; else err "gradle build failed"; fail=1; fi
@@ -117,7 +126,7 @@ else
   err "gradlew not found — run: gradle wrapper --gradle-version 9.5.1"; fail=1
 fi
 
-# --- 6) SQL lint ----------------------------------------------------------
+# --- 7) SQL lint ----------------------------------------------------------
 bold "SQL lint (sqlfluff)"
 SQL_DIR="server/src/main/resources/db/migration"
 if command -v sqlfluff >/dev/null 2>&1; then

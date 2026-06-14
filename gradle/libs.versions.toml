@@ -7,6 +7,9 @@ flyway         = "10.21.0"
 picocli        = "4.7.6"
 pdfbox         = "3.0.7"
 jsoup          = "1.21.1"
+checkstyle     = "13.4.2"
+pmd            = "7.24.0"
+cpd-plugin     = "3.5"
 
 [libraries]
 junit-jupiter           = { module = "org.junit.jupiter:junit-jupiter",              version.ref = "junit-jupiter" }
@@ -22,3 +25,4 @@ jsoup                   = { module = "org.jsoup:jsoup",                         
 
 [plugins]
 micronaut-application = { id = "io.micronaut.application", version = "5.0.0" }
+cpd                   = { id = "de.aaschmid.cpd",          version.ref = "cpd-plugin" }

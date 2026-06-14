@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class PdfBoxPdfTextExtractor implements PdfTextExtractor {
 
-    private static final Logger log = LoggerFactory.getLogger(PdfBoxPdfTextExtractor.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PdfBoxPdfTextExtractor.class);
 
     @Override
     public Optional<String> extractText(byte[] body) {
@@ -27,7 +27,7 @@ public final class PdfBoxPdfTextExtractor implements PdfTextExtractor {
             text = text == null ? "" : text.strip();
             return text.isEmpty() ? Optional.empty() : Optional.of(text);
         } catch (IOException | RuntimeException e) {
-            log.warn("PDF text extraction failed: {}", e.toString());
+            LOG.warn("PDF text extraction failed: {}", e.toString());
             return Optional.empty();
         }
     }
