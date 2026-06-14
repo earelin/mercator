@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 #
-# Local CI pipeline for the documentation.
+# Local CI pipeline.
 # Verifies, for every Markdown file in the repo:
 #   1. Markdown formatting/style   -> markdownlint-cli2
 #   2. Links (relative + anchors, and external URLs) -> lychee
 #   3. Mermaid diagram syntax      -> @mermaid-js/mermaid-cli (mmdc)
+#   4. Docker Compose files        -> dclint (via npx)
+# And then:
+#   5. Gradle build                -> ./gradlew build
 #
 # Run it manually:        ./script/ci.sh
 # Skip external links:    CHECK_EXTERNAL=0 ./script/ci.sh
@@ -105,8 +108,16 @@ else
   err "npx not found"; fail=1
 fi
 
+# --- 5) Gradle build ------------------------------------------------------
+bold "Gradle build (./gradlew build)"
+if [ -f ./gradlew ]; then
+  if ./gradlew build; then ok "gradle build"; else err "gradle build failed"; fail=1; fi
+else
+  err "gradlew not found — run: gradle wrapper --gradle-version 9.5.1"; fail=1
+fi
+
 # --- Result ---------------------------------------------------------------
 echo
-if [ "$fail" -eq 0 ]; then printf '\033[32mAll documentation checks passed.\033[0m\n'; else
-  printf '\033[31mDocumentation checks FAILED.\033[0m\n'; fi
+if [ "$fail" -eq 0 ]; then printf '\033[32mAll checks passed.\033[0m\n'; else
+  printf '\033[31mChecks FAILED.\033[0m\n'; fi
 exit "$fail"
