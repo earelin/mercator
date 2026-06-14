@@ -18,7 +18,7 @@ dependencies {
 }
 
 application {
-    mainClass = "dev.mercator.ingester.IngesterCommand"
+    mainClass = "net.earelin.mercator.ingester.IngesterCommand"
 }
 
 tasks.withType<Test> {

@@ -1,4 +1,4 @@
 subprojects {
-    group = "dev.mercator"
+    group = "net.earelin.mercator"
     version = "0.1.0-SNAPSHOT"
 }

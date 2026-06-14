@@ -1,4 +1,4 @@
-package dev.mercator.server;
+package net.earelin.mercator.server;
 
 import io.micronaut.runtime.Micronaut;
 

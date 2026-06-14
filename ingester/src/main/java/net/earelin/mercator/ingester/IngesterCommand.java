@@ -1,4 +1,4 @@
-package dev.mercator.ingester;
+package net.earelin.mercator.ingester;
 
 import picocli.CommandLine;
 import picocli.CommandLine.Command;

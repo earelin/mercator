@@ -13,12 +13,12 @@ micronaut {
     testRuntime("junit5")
     processing {
         incremental(true)
-        annotations("dev.mercator.server.*")
+        annotations("net.earelin.mercator.server.*")
     }
 }
 
 application {
-    mainClass = "dev.mercator.server.Application"
+    mainClass = "net.earelin.mercator.server.Application"
 }
 
 dependencies {
