@@ -5,6 +5,14 @@ slf4j          = "2.0.16"
 logback        = "1.5.12"
 flyway         = "10.21.0"
 picocli        = "4.7.6"
+pdfbox         = "3.0.7"
+jsoup          = "1.21.1"
+checkstyle     = "13.4.2"
+pmd            = "7.24.0"
+cpd-plugin     = "3.5"
+assertj        = "3.27.7"
+assertj-db     = "3.0.2"
+mockito        = "5.23.0"
 
 [libraries]
 junit-jupiter           = { module = "org.junit.jupiter:junit-jupiter",              version.ref = "junit-jupiter" }
@@ -15,6 +23,13 @@ logback-classic         = { module = "ch.qos.logback:logback-classic",          
 flyway-core             = { module = "org.flywaydb:flyway-core",                     version.ref = "flyway" }
 flyway-postgresql       = { module = "org.flywaydb:flyway-database-postgresql",      version.ref = "flyway" }
 picocli                 = { module = "info.picocli:picocli",                         version.ref = "picocli" }
+pdfbox                  = { module = "org.apache.pdfbox:pdfbox",                       version.ref = "pdfbox" }
+jsoup                   = { module = "org.jsoup:jsoup",                                version.ref = "jsoup" }
+assertj-core            = { module = "org.assertj:assertj-core",                       version.ref = "assertj" }
+assertj-db              = { module = "org.assertj:assertj-db",                         version.ref = "assertj-db" }
+mockito-core            = { module = "org.mockito:mockito-core",                       version.ref = "mockito" }
+mockito-junit-jupiter   = { module = "org.mockito:mockito-junit-jupiter",             version.ref = "mockito" }
 
 [plugins]
 micronaut-application = { id = "io.micronaut.application", version = "5.0.0" }
+cpd                   = { id = "de.aaschmid.cpd",          version.ref = "cpd-plugin" }

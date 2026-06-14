@@ -20,6 +20,19 @@ before writing code** — they define what to build and the constraints that gov
 
 The database must be running (`docker compose up -d`) before starting the server.
 
+## Testing conventions
+
+- **Prefer stubs over mocks.** Drive behaviour through stubbed inputs and assert on observable
+  outcomes / captured state — not on interactions via `verify()`. For stateful or side-effecting
+  collaborators (a cache, a recorder, a call counter), use a small hand-written stub double that
+  captures state and assert on that state; reserve Mockito for **stubbing** (`when(…).thenReturn(…)`)
+  stateless inputs, not interaction verification.
+- **AssertJ** (`assertThat`) for assertions, not native JUnit assertions; **assertj-db** for
+  database-backed checks.
+- Test method names are **snake_case**.
+- `./gradlew check` runs Checkstyle (shared config in `config/checkstyle/`) and CPD
+  (duplication); keep both green.
+
 ## What Mercator is
 
 Mercator turns Spain's official mercantile gazette — the **BORME** (*Boletín Oficial del
