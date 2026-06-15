@@ -1,0 +1,65 @@
+# Dependabot configuration for Mercator.
+# Keeps Gradle dependencies, the Gradle wrapper, Docker images and GitHub
+# Actions up to date. See https://docs.github.com/code-security/dependabot
+version: 2
+
+updates:
+  # Gradle: build scripts, the version catalog (gradle/libs.versions.toml) and
+  # the wrapper. A single root entry covers the whole multi-project build.
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Madrid
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - gradle
+    commit-message:
+      prefix: build(deps)
+      prefix-development: build(deps-dev)
+    groups:
+      # Patch/minor bumps land in one PR to keep review noise low; majors stay
+      # separate so breaking changes get their own scrutiny.
+      gradle-minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  # Docker images referenced from docker-compose.yml (e.g. postgres).
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Madrid
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - docker
+    commit-message:
+      prefix: build(deps)
+
+  # GitHub Actions workflows (.github/workflows). No workflows exist yet;
+  # this keeps them current as soon as they are added.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Madrid
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - github-actions
+    commit-message:
+      prefix: ci(deps)
+    groups:
+      github-actions:
+        update-types:
+          - minor
+          - patch
