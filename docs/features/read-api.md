@@ -95,6 +95,8 @@ flowchart LR
 - [ ] Company search endpoint (trigram ranking + province filter + pagination).
 - [ ] Company detail endpoint (acts + temporal admins + addresses).
 - [ ] Person detail endpoint (companies/roles + confidence).
+- [ ] Temporal as-of query (`?at=YYYY-MM-DD`) on company/person detail — administrators and
+      addresses *as of* a given date, resolved against validity intervals.
 - [ ] Suppression-aware serialization (filter suppressed rows from search/detail/links).
 - [ ] Link-query endpoints (delegate to link-queries; DTO with separate `identity_confidence`
       + `temporal`).

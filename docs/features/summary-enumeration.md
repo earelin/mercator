@@ -77,7 +77,9 @@ flowchart LR
 
 ## Implementation issues
 
-- [ ] Summary REST client: fetch `sumario/{AAAAMMDD}`, handle 404/5xx/429, configurable `Accept`.
+- [ ] Summary REST client: fetch `sumario/{AAAAMMDD}`, handle 404/5xx/429 via the **single
+      shared rate limiter/retry policy** (shared with [document-fetch](document-fetch.md), not a
+      second limiter), configurable `Accept`.
 - [ ] Summary parser (XML) → typed document descriptors for Sección A items.
 - [ ] Date iterator over an inclusive range with non-publication-day skipping.
 - [ ] Capture per-item `url_xml`/`url_html`/`url_pdf`; fallback constructor `xml.php?id={id}` if missing.

@@ -39,6 +39,15 @@ backups.
   Elasticsearch/search engine — PostgreSQL `pg_trgm` covers fuzzy search, per
   [ADR-0004](../architecture/0004-postgresql-as-primary-datastore.md)). The build is a
   **Gradle 9.5 multi-project** (`shared`, `server`, `ingester`).
+- **Resource sizing & performance:** the box hosts PostgreSQL **and** the Micronaut JVM, so
+  PostgreSQL (`shared_buffers`, `work_mem`) and the JVM heap are sized **together** — the
+  GIN/trigram working set and the API process must coexist **without swapping**. This is a
+  tuning task, not a fixed assumption ([Spec 8 § Performance](../specs/08-non-functional.md)).
+  The **~1 s p95** default-link-query latency target is owned by
+  [Spec 8](../specs/08-non-functional.md) and benchmarked in [link-queries](link-queries.md);
+  **link-query latency and `work_mem` pressure are tracked in production** so the Apache AGE
+  escalation ([ADR-0010](../architecture/0010-postgresql-ctes-over-graph-db.md)) stays a
+  *measured* decision ([ADR-0017](../architecture/0017-observability-logging-and-alerting.md)).
 
 ## Data flow
 
@@ -72,10 +81,15 @@ flowchart LR
 - **Silent job failure** — the nightly incremental could stop unnoticed; a last-success
   heartbeat + dead-man's-switch alert covers it
   ([ADR-0017](../architecture/0017-observability-logging-and-alerting.md)).
+- **Memory pressure / swapping** — the shared 8 GB box runs PostgreSQL **and** the JVM;
+  `shared_buffers`/`work_mem` and the heap are co-sized and swap is watched, since swapping
+  would blow the ~1 s p95 latency target ([Spec 8 § Performance](../specs/08-non-functional.md)).
 
 ## Acceptance criteria
 
 - The server stack comes up reproducibly from compose with all extensions enabled.
+- PostgreSQL and the JVM coexist on the box **without swapping**; default link queries meet the
+  **~1 s p95** target, and query latency + `work_mem` pressure are observable in production.
 - The in-server daily job runs on schedule; nightly backups land in object storage and restore.
 - The public surface is read-only (no write/ingest endpoint reachable).
 - In production, unauthenticated API requests are rejected (`401`); no secret is present in
@@ -92,4 +106,9 @@ flowchart LR
 - [ ] Micronaut `@Scheduled` daily job config (cron expression, run guard).
 - [ ] Nightly **encrypted** `pg_dump` to EU object storage + **rehearsed** restore + retention.
 - [ ] Reverse proxy + TLS (Let's Encrypt) in front of the read API.
-- [ ] Monitoring/alerting: disk, daily-job heartbeat/dead-man's-switch, API health ([ADR-0017](../architecture/0017-observability-logging-and-alerting.md)).
+- [ ] Memory-budget tuning: co-size PostgreSQL (`shared_buffers`/`work_mem`) and the JVM heap
+      for the ~8 GB box so the GIN/trigram working set + API process run without swapping
+      ([Spec 8 § Performance](../specs/08-non-functional.md)).
+- [ ] Monitoring/alerting: disk, daily-job heartbeat/dead-man's-switch, API health, and
+      **link-query latency + `work_mem` pressure** (the AGE-escalation decision input)
+      ([ADR-0017](../architecture/0017-observability-logging-and-alerting.md)).

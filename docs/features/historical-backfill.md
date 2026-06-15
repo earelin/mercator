@@ -76,7 +76,8 @@ flowchart LR
 - [ ] CLI date-range parameters: explicit start/end dates + `--month YYYY-MM` shorthand for
       single-month test runs (default = full 2009→today range).
 - [ ] `COPY`-based bulk loader into `staging_act`.
-- [ ] Merge step via shared `IngestionService` bulk entry point + chunked upserts + `borme_log` updates.
+- [ ] Merge step via shared `IngestionService` bulk entry point (built in
+      [entity-resolution](entity-resolution.md)) + chunked upserts + `borme_log` updates.
 - [ ] Post-merge errata reconciliation pass over `UNAPPLIED` `act_correction` rows (idempotent).
 - [ ] Resume logic from `borme_log`; per-document error isolation + retry.
 - [ ] Rate-limit/backoff config shared with document-fetch.

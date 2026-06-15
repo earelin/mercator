@@ -65,7 +65,8 @@ flowchart TD
 
 - [ ] Micronaut `@Scheduled` daily job + concurrency/run guard.
 - [ ] Today+yesterday enumeration and `borme_log` diffing.
-- [ ] Wire the job to the shared `IngestionService` (in-process upsert).
+- [ ] Wire the job to the shared `IngestionService` (built in
+      [entity-resolution](entity-resolution.md); in-process upsert).
 - [ ] Errata reconciliation pass over `UNAPPLIED` corrections (shared with backfill).
 - [ ] Outcome logging + last-success heartbeat + low-confidence-match alerting ([ADR-0017](../architecture/0017-observability-logging-and-alerting.md)).
 - [ ] Operational runbook (what to do on persistent failures).
