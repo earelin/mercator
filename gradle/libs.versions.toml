@@ -13,6 +13,7 @@ cpd-plugin     = "3.5"
 assertj        = "3.27.7"
 assertj-db     = "3.0.2"
 mockito        = "5.23.0"
+testcontainers = "1.20.6"
 
 [libraries]
 junit-jupiter           = { module = "org.junit.jupiter:junit-jupiter",              version.ref = "junit-jupiter" }
@@ -29,6 +30,8 @@ assertj-core            = { module = "org.assertj:assertj-core",                
 assertj-db              = { module = "org.assertj:assertj-db",                         version.ref = "assertj-db" }
 mockito-core            = { module = "org.mockito:mockito-core",                       version.ref = "mockito" }
 mockito-junit-jupiter   = { module = "org.mockito:mockito-junit-jupiter",             version.ref = "mockito" }
+testcontainers-postgresql = { module = "org.testcontainers:postgresql",               version.ref = "testcontainers" }
+testcontainers-junit    = { module = "org.testcontainers:junit-jupiter",              version.ref = "testcontainers" }
 
 [plugins]
 micronaut-application = { id = "io.micronaut.application", version = "5.0.0" }
