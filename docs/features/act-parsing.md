@@ -81,6 +81,12 @@ flowchart LR
 
 - [ ] Port bormeparser dictionaries (act vocabulary, cargo map, province codes, suffix list) under GPL.
 - [ ] Company-block builder from XML `articulo`/`parrafo` pairs (+ text/PDF fallback splitter).
+- [ ] Company-header field parser: split the `<p class="articulo">` line into optional numeric
+      prefix + raw company name + trailing legal-form token; tolerate `NNNNN - NAME SL.` and the
+      Barcelona `ACTIVIDAD PRINCIPAL: <CNAE>` framing (canonical legal-form detection stays in
+      [entity-extraction-normalisation](entity-extraction-normalisation.md)).
+- [ ] Pre-parse text normalisation of `<p class="parrafo">` (collapse line-wrapping/whitespace,
+      repair encoding artefacts) feeding the act splitter — per the format-drift edge cases.
 - [ ] Act splitter by keyword, multi-act aware.
 - [ ] Constitución payload parser (objeto, capital, domicilio, comienzo).
 - [ ] Cargo-act parser (Nombramientos/Ceses → role→[names]).

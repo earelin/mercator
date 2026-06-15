@@ -66,4 +66,7 @@ flowchart LR
 - [ ] Role/event canonicalisation tables → enums.
 - [ ] Address normalisation (norm_text, municipality, province).
 - [ ] DNI/NIE suppression filter.
+- [ ] Assemble the normalised-unresolved record (company stub + per-appointment person stubs +
+      address stub + typed acts) — the single shape both write paths and
+      [entity-resolution](entity-resolution.md) consume.
 - [ ] Property-based tests for normalisation idempotency and stability.

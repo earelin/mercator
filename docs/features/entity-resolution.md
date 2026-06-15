@@ -93,3 +93,14 @@ flowchart LR
 - [ ] Confidence scoring + low-confidence flagging surfaced to callers.
 - [ ] Resolution test suite (golden cases: renames, homonyms, accent/spelling variants).
 - [ ] Configurable thresholds + a review queue for flagged matches.
+- [ ] Shared `IngestionService` application service (`shared`): orchestrates one document's
+      pipeline (fetch → parse → normalise → resolve → upsert), exposing a **row-by-row** entry
+      point (daily incremental) and a **bulk-merge** entry point (backfill), and enforcing the
+      app-level `borme_log` idempotency short-circuit so a re-processed document is a no-op
+      ([ADR-0006](../architecture/0006-hybrid-write-path.md), [Spec 2](../specs/02-ingestion.md)).
+- [ ] Core-owned **resolution/persistence port** + JDBC adapter
+      ([ADR-0014](../architecture/0014-hexagonal-architecture.md)): the adapter invokes
+      `resolve_company`/`resolve_person`/`resolve_address` and performs the live-table upserts
+      (`borme_act` with `ON CONFLICT DO NOTHING`, plus the appointment / company_address
+      temporal-interval close from [database-schema](database-schema.md)). One implementation,
+      both write paths.

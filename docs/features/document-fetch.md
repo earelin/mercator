@@ -73,7 +73,8 @@ flowchart TD
 
 - [x] HTTP fetcher with rate limiter, backoff, and User-Agent.
 - [x] XML document fetch + parse (`<metadatos>` + `<texto>` paragraphs), encoding-safe.
-- [x] Raw-response cache (disk) keyed by `borme_id`, read-through.
+- [x] Raw-response cache (disk) keyed by `borme_id`, read-through, **tagging the stored
+      representation (`xml`|`txt`|`pdf`)**.
 - [x] Fetch-error recording integrated with `borme_log`.
 - [x] Fallback chain: `txt.php` HTML-strip, then PDF text extraction.
 - [x] Optional object-storage cache backend.
