@@ -50,7 +50,8 @@ how every feature's I/O sits behind a core-owned port.
 
 **V1 pipeline (end to end):** summary-enumeration → document-fetch → act-parsing (full act
 catalogue, incl. errata-corrections) → entity-extraction-normalisation → database-schema → entity-resolution →
-historical-backfill (offline `ingester`) + daily-incremental (in-server scheduler) →
+historical-backfill (gated in-server import endpoint) + daily-incremental (in-server scheduler) →
 read-api + link-queries, with contracts-integration and data-protection, all deployed per
-deployment-operations. The shared fetch/parse/normalise/resolve logic lives in the `shared`
-library; the API is read-only (no HTTP ingest).
+deployment-operations. The fetch/parse/normalise/resolve logic lives in the single module's
+domain/application core; the **public** API is read-only — the only write surface is the gated,
+authenticated admin import endpoint.

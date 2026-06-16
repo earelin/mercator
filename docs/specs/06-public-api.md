@@ -7,10 +7,10 @@
 
 ## What this describes
 
-The HTTP surface Mercator exposes. It is **read-only**: there is no write/ingest endpoint.
-Ingestion happens off the HTTP surface — the historical backfill runs in the offline
-`ingester`, and the daily incremental runs inside the `server` on the Micronaut scheduler,
-both writing to PostgreSQL via the shared library
+The HTTP surface Mercator exposes. The **public** surface is **read-only**: no public endpoint
+mutates data. Ingestion runs inside the server — the daily incremental on the Micronaut
+scheduler, and the historical backfill on demand via a **gated, authenticated admin import
+endpoint** (off the public namespace; see below) — both writing to PostgreSQL directly
 ([Spec 2](02-ingestion.md), [ADR-0006](../architecture/0006-hybrid-write-path.md)).
 
 ## Read API (public, read-only)
@@ -27,8 +27,8 @@ A stateless Java 25 / Micronaut service over PostgreSQL. Capabilities:
 
 Properties:
 
-- **Read-only for all consumers**, including the contracts project. No HTTP endpoint mutates
-  data.
+- **Read-only for all consumers**, including the contracts project. No *public* endpoint mutates
+  data; the only write surface is the admin import endpoint below.
 - Stateless; every response derives from PostgreSQL.
 - **Versioned** under `/api/v1`; a breaking change ships a new version prefix.
 - Returns confidence/match metadata wherever identity is probabilistic, so consumers never
@@ -55,3 +55,22 @@ Properties:
   default and **fail-closed**; accepted keys come from an environment variable / injected
   secret. See [ADR-0013](../architecture/0013-api-key-auth-and-config.md).
 - Consumers (including the contracts project) must hold and send a key in production.
+
+## Admin import endpoint (gated write surface)
+
+A single **admin** endpoint triggers the historical / massive import
+([Spec 2](02-ingestion.md), [historical-backfill](../features/historical-backfill.md)). It is
+**not part of the public read contract** and is held to a stricter posture than the read API:
+
+- **Off the public namespace** — under an admin path (e.g. `/admin/imports`), separate from
+  `/api/v1`.
+- **By date or by month** — `POST …/by-date` and `POST …/by-month` start an import; **invalid
+  bounds** return `400`.
+- **Asynchronous** — a request is accepted and returns **`202`** with a **job id** and a status
+  URL; the import runs in the background. `GET …/{jobId}` reports the job's status
+  (`ACCEPTED` / `RUNNING` / `COMPLETED` / `FAILED`); an unknown id returns `404`.
+- **Disable-able by config** — gated by `mercator.imports.historical.enabled` (**default off**).
+  When disabled the routes are **absent** (`404`), not merely forbidden.
+- **Always authenticated** — requires the `X-API-Key` in **every** environment, including local
+  dev where reads are anonymous ([ADR-0013](../architecture/0013-api-key-auth-and-config.md)).
+  Running an import therefore needs **both** the enable flag and a valid key.

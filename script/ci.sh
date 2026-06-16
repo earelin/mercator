@@ -128,7 +128,7 @@ fi
 
 # --- 7) SQL lint ----------------------------------------------------------
 bold "SQL lint (sqlfluff)"
-SQL_DIR="server/src/main/resources/db/migration"
+SQL_DIR="src/main/resources/db/migration"
 if command -v sqlfluff >/dev/null 2>&1; then
   if sqlfluff lint "$SQL_DIR"; then ok "SQL lint"; else err "SQL lint issues"; fail=1; fi
 else

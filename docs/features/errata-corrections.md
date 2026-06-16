@@ -27,10 +27,10 @@ record-but-flag when the fix cannot be applied confidently.
   value and its correct replacement (e.g. `GERAR4DO` → `GERARDO`; old denominación → new). The
   parser emits this as an **unresolved** correction record with the raw block retained; it does
   **not** apply it (the parser never resolves identity, [ADR-0007](../architecture/0007-single-source-of-truth-entity-resolution.md)).
-- **Application (shared, both write paths).** The shared `IngestionService` locates the prior
-  act / derived row for the same company and Inscripción/Datos registrales and **rewrites the
-  erroneous value** to the correct one. Applied identically by the backfill merge and the daily
-  incremental ([ADR-0006](../architecture/0006-hybrid-write-path.md)). When the corrected value
+- **Application (in-server ingestion service, both write paths).** The ingestion service locates
+  the prior act / derived row for the same company and Inscripción/Datos registrales and
+  **rewrites the erroneous value** to the correct one. Applied identically by the historical-import
+  bulk merge and the daily incremental ([ADR-0006](../architecture/0006-hybrid-write-path.md)). When the corrected value
   is an entity name, **resolution is re-run** for that entity, which may re-point or re-score a
   probabilistic person ([ADR-0009](../architecture/0009-probabilistic-person-resolution.md)).
 - **Audit trail.** The `FE_ERRATAS` act row is always stored, the **pre-correction value is
@@ -91,7 +91,7 @@ flowchart LR
 - [ ] `FE_ERRATAS` recognition in the act splitter (keyword at the start of the `parrafo`).
 - [ ] Correction-prose parser: extract target Inscripción/Datos registrales + before→after value.
 - [ ] Target matcher: locate the prior act/derived row by company (Hoja+province) + Inscripción.
-- [ ] Apply step in shared `IngestionService` (rewrite + re-resolve on name change) — both write paths.
+- [ ] Apply step in the in-server ingestion service (rewrite + re-resolve on name change) — both write paths.
 - [ ] Audit storage: retain pre-correction value + link amended row to the originating errata.
 - [ ] Unapplied/flagged path + review/retry; idempotent applied-marker guard.
 - [ ] Golden-case tests (name typo, denominación, appointee/shareholder; matchable + unmatchable).

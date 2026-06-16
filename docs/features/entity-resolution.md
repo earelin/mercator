@@ -16,8 +16,8 @@ exact normalised text — invoked identically by both write paths.
 Implemented as shared PL/pgSQL functions `resolve_company(...)`, `resolve_person(...)` and
 `resolve_address(...)`
 (see [ADR-0007](../architecture/0007-single-source-of-truth-entity-resolution.md)), wrapped
-by the `shared` library's `IngestionService`; the `ingester` backfill merge and the `server`
-scheduled daily job both call them — **one definition, both callers**.
+by the in-server ingestion service; the historical-import bulk merge and the scheduled daily
+job both call them — **one definition, both callers**.
 
 - **`resolve_company`** — match on the natural key `(reg_hoja, province_code)` first (exact,
   confidence `1.0`). **A missing/garbled Hoja never silently name-merges** — that would violate
@@ -79,7 +79,7 @@ flowchart LR
 
 ## Acceptance criteria
 
-- Identical resolution decisions whether called from the backfill merge or the server's
+- Identical resolution decisions whether called from the historical-import bulk merge or the
   scheduled daily job.
 - Known same-company acts (same Hoja) resolve to one company across years.
 - Person matches carry calibrated confidence; ambiguous cases are flagged, not merged.
@@ -93,11 +93,11 @@ flowchart LR
 - [ ] Confidence scoring + low-confidence flagging surfaced to callers.
 - [ ] Resolution test suite (golden cases: renames, homonyms, accent/spelling variants).
 - [ ] Configurable thresholds + a review queue for flagged matches.
-- [ ] Shared `IngestionService` application service (`shared`): orchestrates one document's
+- [ ] In-server ingestion service (domain/application core): orchestrates one document's
       pipeline (fetch → parse → normalise → resolve → upsert), exposing a **row-by-row** entry
-      point (daily incremental) and a **bulk-merge** entry point (backfill), and enforcing the
-      app-level `borme_log` idempotency short-circuit so a re-processed document is a no-op
-      ([ADR-0006](../architecture/0006-hybrid-write-path.md), [Spec 2](../specs/02-ingestion.md)).
+      point (daily incremental) and a **bulk-merge** entry point (historical import), and
+      enforcing the app-level `borme_log` idempotency short-circuit so a re-processed document is
+      a no-op ([ADR-0006](../architecture/0006-hybrid-write-path.md), [Spec 2](../specs/02-ingestion.md)).
 - [ ] Core-owned **resolution/persistence port** + JDBC adapter
       ([ADR-0014](../architecture/0014-hexagonal-architecture.md)): the adapter invokes
       `resolve_company`/`resolve_person`/`resolve_address` and performs the live-table upserts
