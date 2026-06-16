@@ -8,7 +8,7 @@ person detail, and the entry points for link queries.
 ## Related specs / ADRs
 
 - Specs: [6 — Public API](../specs/06-public-api.md)
-- ADRs: [0005 — Three Java modules](../architecture/0005-java-ingester-and-read-api.md), [0013 — API key auth, configured per environment](../architecture/0013-api-key-auth-and-config.md)
+- ADRs: [0005 — Single Micronaut module](../architecture/0005-java-ingester-and-read-api.md), [0013 — API key auth, configured per environment](../architecture/0013-api-key-auth-and-config.md)
 
 ## Functional behaviour
 
@@ -81,8 +81,9 @@ flowchart LR
 - Search returns ranked, relevant matches; detail endpoints assemble acts + temporal roles +
   addresses correctly.
 - Person endpoints expose confidence; suppressed data never leaks.
-- Read-only: no endpoint mutates data (writes happen only via the `ingester` backfill and the
-  server's scheduled daily job, never over the HTTP surface).
+- Read-only for the public surface: no public endpoint mutates data (writes happen only via the
+  scheduled daily job and the gated, authenticated admin import endpoint —
+  [Spec 6](../specs/06-public-api.md), [historical-backfill](historical-backfill.md)).
 - Production rejects unauthenticated requests with `401`; local dev serves without a key;
   switching is config-only (no code/build change) and fails closed.
 

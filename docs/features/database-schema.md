@@ -4,7 +4,8 @@
 
 The PostgreSQL schema: live entity tables, staging tables for backfill, the `borme_log`,
 required extensions, indexes, and the UNIQUE/temporal constraints that enforce idempotency
-and history.
+and history. It ships as a **single baseline migration** (`V1.0.0__baseline.sql`); from there
+on, changes are additive, semver-versioned migrations ([ADR-0016](../architecture/0016-database-schema-migrations.md)).
 
 ## Related specs / ADRs
 
@@ -82,14 +83,15 @@ Backfill-only tables:
   (FETCHED|PARSED|MERGED|SKIPPED|ERROR), `error_kind` (RETRYABLE|PERMANENT, set only on
   ERROR), `source_path` (`backfill`|`daily_incremental`), `error_detail`, `processed_at`.
   *(`SKIPPED` = non-publication day or a 200-but-empty / no-Sección-A summary; `source_path`
-  has no `api_ingest` value — there is no HTTP ingest, [ADR-0006](../architecture/0006-hybrid-write-path.md).)*
+  distinguishes only the two write paths — the admin import endpoint merely triggers the
+  `backfill` path, it is not a distinct write source, [ADR-0006](../architecture/0006-hybrid-write-path.md).)*
 
 ## Data flow
 
 ```mermaid
 flowchart LR
     BF["backfill: staging_act"] -->|"merge (resolve_*)"| LIVE["company / person / address /<br/>borme_act / appointment / company_address"]
-    DLY["daily: server scheduler<br/>(in-process, shared IngestionService)"] -->|"resolve_*"| LIVE
+    DLY["daily: server scheduler<br/>(in-process, in-server ingestion service)"] -->|"resolve_*"| LIVE
     LIVE -.- NOTE["idempotency: borme_log status +<br/>UNIQUE / ON CONFLICT DO NOTHING"]
 ```
 
@@ -110,8 +112,10 @@ flowchart LR
   constraint does not constrain nulls, so null-Hoja rows are **never** auto-deduped — resolution
   create-and-flags (`name_match_flag`) and records a `match_candidate` for review rather than
   silent name-merge ([entity-resolution](entity-resolution.md), [ADR-0008](../architecture/0008-registry-coordinates-as-company-natural-key.md)).
-- **Schema migrations** — managed by Flyway ([ADR-0016](../architecture/0016-database-schema-migrations.md));
-  adding act types adds enum values/payload, not core tables.
+- **Schema migrations** — the full schema is one baseline (`V1.0.0__baseline.sql`) applied by
+  Flyway on startup ([ADR-0016](../architecture/0016-database-schema-migrations.md)); later
+  changes are additive semver-versioned migrations (adding act types adds enum values/payload,
+  not core tables).
 - **Errata target missing** — a `FE_ERRATAS` whose target act is not present is stored with
   `act_correction.status = UNAPPLIED` + `flag_reason`, not dropped; retried by the
   unapplied-correction reconciliation pass (see [errata-corrections](errata-corrections.md)).
@@ -126,15 +130,12 @@ flowchart LR
 
 ## Implementation issues
 
-- [x] Migration: extensions + live tables (incl. `borme_act.inscripcion`/`doc_seq`,
-      `company.suppressed`/`name_match_flag`, `person.suppressed`) + indexes + UNIQUE constraints.
-- [x] Migration: `staging_act` + `borme_log` (status incl. SKIPPED, `error_kind`, `source_path`).
-- [x] Migration: `act_correction` audit table (canonical target locator + resolved `target_act_id`).
-- [x] Migration: `match_candidate` derived table + scoring columns.
-- [x] Migration: `suppression` + `erasure_log` data-protection tables (independent of act rows).
-- [x] Temporal-interval handling (close previous `valid_to` on new event/address).
-- [x] Idempotency constraints (incl. `doc_seq` discriminator) + `ON CONFLICT DO NOTHING` patterns.
+- [x] Baseline migration `V1.0.0__baseline.sql` — the full schema in one file: extensions;
+      province seed data; live tables (incl. `borme_act.inscripcion`/`doc_seq`,
+      `company.status`/`suppressed`/`name_match_flag`, `person.suppressed`); temporal links;
+      `act_correction` (canonical target locator + resolved `target_act_id`); `staging_act` +
+      `borme_log` (status incl. SKIPPED, `error_kind`, `source_path`); `match_candidate`;
+      `suppression` + `erasure_log`; all indexes, UNIQUE/idempotency constraints (incl. the
+      `doc_seq` discriminator); and the temporal-interval functions.
 - [x] Migration tooling/runner (Flyway) wired into deployment ([ADR-0016](../architecture/0016-database-schema-migrations.md)).
-- [x] Seed/reference data (province codes).
 - [ ] Role enum: `appointment.role` constraint/seed table (deferred — BORME role vocabulary needs bormeparser dictionary port first).
-- [ ] Migration: `company.status` column (`ACTIVE`|`DISSOLVED`|`EXTINCT`|`MERGED`, default `ACTIVE`; CHECK constraint) — set by `DISOLUCION`, `EXTINCION`, `FUSION`, `REAPERTURA` act ingestion.

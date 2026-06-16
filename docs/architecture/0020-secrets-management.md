@@ -7,10 +7,11 @@ Accepted.
 ## Context
 
 Mercator runs as Docker containers on **one cheap EU VPS** ([ADR-0011](0011-cheap-eu-vps-hosting.md)):
-a Micronaut read API plus the daily-incremental job; the historical backfill runs from an
-offline Java ingester. Several secrets need a home:
+a single Micronaut server hosting the read API, the daily-incremental job, and the gated
+historical-import endpoint. Several secrets need a home:
 
-- the **PostgreSQL credentials** (app role and ingester role);
+- the **PostgreSQL credentials** (the runtime application role, and a separate schema-owner /
+  migration role);
 - the **backup object-storage credentials** for off-box dumps
   ([ADR-0019](0019-backup-restore-and-retention.md));
 - the inbound **API keys** that gate the read API.
@@ -30,8 +31,9 @@ single-box deployment with a handful of secrets.
   config files (`application.yml`). The same artifact runs everywhere; only the env differs.
 - **Distinct credentials per concern.** DB credentials, object-storage credentials and API
   keys are separate values — no shared password reused across roles.
-- **Least-privilege DB roles.** The **app** (read API + daily incremental) uses a
-  read-mostly role; the **ingester** uses a separate write/bulk-load role. Neither uses the
+- **Least-privilege DB roles.** The **runtime application role** (read API, daily incremental
+  and the historical-import bulk load) gets only the DML/`COPY` grants it needs; a **separate
+  schema-owner / migration role** owns the schema, functions and Flyway history. Neither uses the
   Postgres superuser. Each gets only the grants it needs (see
   [ADR-0007](0007-single-source-of-truth-entity-resolution.md) /
   [ADR-0016](0016-database-schema-migrations.md) for who owns schema and resolution).
@@ -70,5 +72,5 @@ single-box deployment with a handful of secrets.
 - **Docker / Compose secrets files mounted as `/run/secrets/*`** — viable and slightly
   stricter than env vars, but heavier to wire for marginal gain on a single box; the
   root-owned `.env` is simpler and already 12-factor. Revisit if moving to Swarm/K8s.
-- **One shared credential across app, ingester and backups** — rejected: no per-concern
+- **One shared credential across the app, schema-owner and backups** — rejected: no per-concern
   scoping, no least privilege, and rotation forces touching everything at once.

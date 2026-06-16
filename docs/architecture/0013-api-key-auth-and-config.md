@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted.
+Accepted. *(Updated 2026-06: added the auth posture for the historical-import admin endpoint —
+always authenticated, plus an independent enable/disable config toggle. Maintainer-approved
+redesign amendment — see [ADR-0005](0005-java-ingester-and-read-api.md).)*
 
 ## Context
 
@@ -34,6 +36,15 @@ committed), and behaviour differs **by configuration, not by build or code branc
   manager) at deploy time. **The same artifact runs in every environment.**
 - The names above (`X-API-Key`, `MERCATOR_API_KEYS`, environment identifiers) are the proposed
   defaults, to be finalised in implementation.
+- The **historical-import admin endpoint** ([ADR-0005](0005-java-ingester-and-read-api.md),
+  [ADR-0006](0006-hybrid-write-path.md)) is a **write** surface and is held to a **stricter**
+  rule than the read API: it **always requires the API key — in every environment, including the
+  local/dev profile where reads are anonymous**. It is additionally gated by an independent
+  config toggle (`mercator.imports.historical.enabled`, **default off**) so that running an
+  import needs *both* an explicit enable flag *and* a valid key (defence in depth). When the
+  toggle is off the endpoint routes are **absent** (404), not merely forbidden. The toggle's
+  default is the opposite of the auth default — for *auth* the safe default is "on", for a
+  *destructive bulk trigger* the safe default is "off".
 
 ## Consequences
 

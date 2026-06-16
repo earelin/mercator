@@ -9,7 +9,7 @@ Accepted.
 Mercator fetches everything from a single free public source: the BOE. Two access patterns
 exist — the daily summary via the `datosabiertos` REST API ([ADR-0003](0003-datosabiertos-rest-api-over-legacy-xml.md))
 and per-document fetches (XML → `txt.php` → PDF fallback, [ADR-0002](0002-structured-xml-over-pdf-parsing.md)).
-The **historical backfill** (`ingester`, [ADR-0005](0005-java-ingester-and-read-api.md)) enumerates
+The **historical backfill** (run in-server, [ADR-0005](0005-java-ingester-and-read-api.md)) enumerates
 years of summaries and pulls **millions of documents** against an endpoint with **no commercial
 SLA**. The BOE explicitly describes these feeds as *informative, not guaranteed*, so we must be
 a courteous client and never assume availability.
@@ -37,8 +37,8 @@ Adopt a shared politeness + resilience policy for **all** BOE HTTP access:
    `xml.php`, `txt.php` and PDF paths **must be confirmed permitted** before bulk fetching
    (see [Spec 7](../specs/07-data-protection.md)); if a path is disallowed we do not crawl it.
 
-The backfill runs **off-server / locally** ([ADR-0005](0005-java-ingester-and-read-api.md)) and
-can be throttled further or scheduled overnight to flatten load. **Fail-soft is mandatory**: a
+The backfill runs **in-server, off the request path** ([ADR-0005](0005-java-ingester-and-read-api.md))
+and can be throttled further or scheduled overnight to flatten load. **Fail-soft is mandatory**: a
 single failed fetch degrades to a logged, re-runnable gap — never a process abort.
 
 ## Consequences

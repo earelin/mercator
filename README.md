@@ -4,21 +4,23 @@ Turns Spain's official mercantile gazette (BORME) into a queryable graph of comp
 
 ## Repository structure
 
-A **Gradle 9.5 multi-project** (`settings.gradle.kts`) with three subprojects:
+A **single-project Gradle 9.5** build (`settings.gradle.kts`) producing one Java 25 + Micronaut
+server artifact, with layers separated by package under `src/`:
 
 | Path | Component |
 |------|-----------|
 | [`docs/`](docs/) | Specs, features and architecture decisions (the design source of truth). |
-| [`shared/`](shared/) | Common Java library (BOE client, parser, normalisation, ingestion service) used by both `server` and `ingester`. |
-| [`server/`](server/) | Java 25 + Micronaut **read-only API** + the daily-incremental scheduler — the only server-hosted component. |
-| [`ingester/`](ingester/) | Java offline CLI for the historical backfill — runs locally/off-server. |
+| `src/…/domain/` | Framework-free domain/application core: model, ports, ingestion/parse/normalise logic. |
+| `src/…/infrastructure/` | Driven adapters: BOE HTTP client, document cache, extractors, JDBC persistence. |
+| `src/…/server/` | Micronaut driving adapters + wiring: the **read-only** API, the daily-incremental scheduler, and the gated historical-import endpoint. |
 
 Start with [`docs/specs/`](docs/specs/README.md) for *what* the system does,
 [`docs/features/`](docs/features/README.md) for *how*, and
 [`docs/architecture/`](docs/architecture/README.md) for *why*.
 
-> The project is in its initial (documentation) phase — `shared/`, `server/` and `ingester/`
-> are scaffolding placeholders with no code yet.
+> Early implementation: the document-fetch/parse/persistence layers and the full Flyway schema
+> exist; the ingestion service, resolution functions, read API and the historical-import engine
+> are still to be built (the import endpoint is scaffolded).
 
 ## Development
 

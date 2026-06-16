@@ -14,7 +14,8 @@ regardless of implementation.
 ## Two ingestion modes
 
 1. **Historical backfill** — a one-time bulk load of every publication day from
-   2009-01-02 to the present. Runs in the offline `ingester`, off the server's request path,
+   2009-01-02 to the present. Triggered on demand **inside the server** via a gated admin
+   import endpoint (by date or by month), it runs **asynchronously off the request path**,
    spread over several days to stay polite to the BOE.
 2. **Daily incremental** — runs **inside the server** on the Micronaut scheduler; each
    publication day it picks up that day's (and the previous day's, to catch late publication)
@@ -43,12 +44,14 @@ persist the resulting acts.
 
 ## Write paths
 
-Ingestion writes through two paths, both **directly to the database via the shared library**
-(see [ADR-0006](../architecture/0006-hybrid-write-path.md)) — there is no HTTP ingest API:
+Ingestion writes through two paths, both **in-server and directly to the database**
+(see [ADR-0006](../architecture/0006-hybrid-write-path.md)). Neither writes over a *public* HTTP
+surface — the public API stays read-only ([Spec 6](06-public-api.md)); the backfill is triggered
+through a gated, authenticated **admin** endpoint, not an open ingest API:
 
-- **Backfill (offline `ingester`) → bulk staging + merge.** Millions of acts are bulk-loaded
+- **Backfill (admin import endpoint) → bulk staging + merge.** Millions of acts are bulk-loaded
   into staging tables and merged into the live model in one resolution step.
-- **Daily incremental (`server` scheduler) → in-process upsert.** The tiny daily volume is
+- **Daily incremental (`@Scheduled` bean) → in-process upsert.** The tiny daily volume is
   resolved and upserted row-by-row inside the hosted server.
 
 Both paths invoke the **same entity-resolution logic** (see

@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted.
+Accepted. *(Updated 2026-06: the layers are now separated by **package** within a single module
+rather than across `shared`/`server`/`ingester`; the offline-CLI driving adapter is replaced by
+the in-server import controller. Maintainer-approved redesign amendment — see
+[ADR-0005](0005-java-ingester-and-read-api.md).)*
 
 ## Context
 
@@ -11,8 +14,8 @@ people, acts, addresses and the links between them): it fetches BORME documents 
 with an XML→`txt.php`→PDF fallback ([ADR-0002](0002-structured-xml-over-pdf-parsing.md)), parses and
 normalises free Spanish prose, persists through PostgreSQL with DB-side entity resolution
 ([ADR-0007](0007-single-source-of-truth-entity-resolution.md)), serves a read-only HTTP API,
-and runs both a daily incremental and an offline backfill ([ADR-0006](0006-hybrid-write-path.md)).
-The same fetch/parse/normalise/persist logic is shared between `server` and `ingester`
+and runs both a daily incremental and a historical backfill ([ADR-0006](0006-hybrid-write-path.md)).
+The same fetch/parse/normalise/persist logic backs both write paths inside one module
 ([ADR-0005](0005-java-ingester-and-read-api.md)).
 
 The goals, in order, are **clear isolation between layers so the code is easy to understand
@@ -31,9 +34,11 @@ Adopt **hexagonal architecture (ports and adapters)** across the Java modules, a
 **pragmatically** — the unit of the pattern is the *layer boundary*, not the individual class.
 The aim is that anyone reading the code can tell business logic from I/O at a glance.
 
-- **Domain core** (in `shared`) — the model and the use-case/application services
-  (parsing, normalisation, the `IngestionService`). It depends on **nothing** outward: no
-  Micronaut, no JDBC, no HTTP client. Dependencies point **inward only**.
+- **Domain core** (in the `net.earelin.mercator.domain` packages) — the model and the
+  use-case/application services (parsing, normalisation, the ingestion service). It depends on
+  **nothing** outward: no Micronaut, no JDBC, no HTTP client. Dependencies point **inward only**.
+  The boundary is now enforced by **package** within the single module rather than by a separate
+  Gradle library.
 - **Ports** — interfaces *owned by the core* expressing what it needs and offers:
   - *Driven (outbound) ports* — e.g. a `BormeGateway` (enumerate summary + fetch a document,
     encapsulating the XML→txt→PDF fallback), and a persistence/resolution port that exposes
@@ -41,14 +46,15 @@ The aim is that anyone reading the code can tell business logic from I/O at a gl
   - *Driving (inbound) ports* — the use-case interfaces the API and jobs call (query
     services, the ingestion use case).
 - **Adapters** — implementations at the edges, depending **on** the core, never the reverse:
-  - *Driven adapters* (in `shared`): the BOE HTTP client; the PostgreSQL/JDBC persistence
-    adapter that invokes the PL/pgSQL resolution functions and link queries.
-  - *Driving adapters*: in `server`, the Micronaut HTTP controllers (read API) and the
-    `@Scheduled` daily-incremental bean; in `ingester`, the offline CLI and its bulk
-    staging-table + merge path.
-- **Wiring** — Micronaut dependency injection composes ports to adapters at the application
-  boundary (`server`/`ingester`). Framework annotations live in the adapters and wiring,
-  **not** in the domain core.
+  - *Driven adapters* (in `net.earelin.mercator.infrastructure`): the BOE HTTP client; the
+    PostgreSQL/JDBC persistence adapter that invokes the PL/pgSQL resolution functions and link
+    queries; the in-memory import-job store.
+  - *Driving adapters* (in `net.earelin.mercator.server`): the Micronaut HTTP controllers (read
+    API), the `@Scheduled` daily-incremental bean, and the historical-import controller + async
+    runner driving the bulk staging-table + merge path.
+- **Wiring** — Micronaut dependency injection composes ports to adapters in the `…server`
+  packages (`@Factory` methods). Framework annotations live in the driving adapters and wiring,
+  **not** in the domain core or the driven adapters.
 
 **Reconciliation with DB-side resolution ([ADR-0007](0007-single-source-of-truth-entity-resolution.md)).**
 Entity resolution intentionally lives in PL/pgSQL, which sits in tension with "all domain
@@ -78,10 +84,10 @@ or the core easier to test?* If none of those, leave it out.
   core or the API ([ADR-0010](0010-postgresql-ctes-over-graph-db.md)).
 - Micronaut stays a **boundary concern**, preserving fast startup / low memory on the cheap
   VPS ([ADR-0011](0011-cheap-eu-vps-hosting.md)) without coupling the core to it.
-- The `shared`/`server`/`ingester` split ([ADR-0005](0005-java-ingester-and-read-api.md)) maps
-  cleanly onto core+ports+driven-adapters (`shared`) vs. driving-adapters+wiring
-  (`server`/`ingester`), and the two write paths become two driving adapters over the same
-  ingestion use case.
+- The package split ([ADR-0005](0005-java-ingester-and-read-api.md)) maps cleanly onto
+  core+ports (`…domain`) + driven-adapters (`…infrastructure`) vs. driving-adapters+wiring
+  (`…server`), and the two write paths become two driving usages over the same ingestion use
+  case — the `@Scheduled` daily bean and the import controller's async runner.
 - **Cost:** more interfaces and mapping (domain objects ↔ DTOs ↔ persistence rows) than a
   layered design — accepted as the price of isolation, and bounded by the pragmatic-scope rule.
 

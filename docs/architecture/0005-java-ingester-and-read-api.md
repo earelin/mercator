@@ -1,54 +1,67 @@
-# ADR-0005 — Three Java modules: shared library, hosted server, offline ingester
+# ADR-0005 — Single Micronaut module: read API, daily scheduler, and historical-import endpoint
+
+*(Filename is legacy — kept to preserve inbound links. This ADR no longer describes a separate
+ingester or shared library.)*
 
 ## Status
 
-Accepted. *(Updated: single Java stack; daily incremental moved into the
-server's scheduler; common code extracted to a shared library — see Context.)*
+Accepted. *(Updated 2026-06: collapsed the three-module split — `shared`/`server`/`ingester` —
+into a **single Micronaut module**; the offline backfill CLI is removed and the historical
+import now runs in-server behind a gated admin endpoint. A maintainer-approved redesign for
+simplicity; superseding-ADR immutability is relaxed for this amendment — see Context.)*
 
 ## Context
 
 Two distinct workloads exist: (1) fetching and **parsing** BORME documents — regex over the
 per-document XML, dictionary lookups, normalisation; and (2) serving a **read API** to
 consumers, which must be hosted and stable. In addition the data must be kept current with a
-**daily incremental** ingest.
+**daily incremental** ingest, and a one-time **historical backfill** (2009→present) must be
+run.
 
 An earlier draft put the parsing worker in **Python**; on inspection the work is regex over
 structured XML ([ADR-0002](0002-structured-xml-over-pdf-parsing.md)) plus dictionaries — not ML/NLP
 — and the hard fuzzy matching lives in **PostgreSQL** and shared DB functions
 ([ADR-0007](0007-single-source-of-truth-entity-resolution.md)), independent of the worker's
-language. The operator is Java-centric and values a single stack. Both the daily incremental
-and the historical backfill need the *same* fetch/parse/normalise/persist logic, which must
-not be duplicated.
+language. The operator is Java-centric and values a single stack.
+
+A subsequent draft split the Java into three Gradle subprojects — a `shared` library, a hosted
+`server`, and an offline `ingester` CLI for the backfill. In practice the backfill is a modest
+text job (low-single-digit-millions of acts, [Spec 8](../specs/08-non-functional.md)) that runs
+rarely, and the single cheap VPS ([ADR-0011](0011-cheap-eu-vps-hosting.md)) already hosts the
+server. Maintaining a second runnable artifact, a library boundary, and a CLI surface for an
+operation that the hosted server can perform directly was **needless ceremony**. The operator
+chose to **simplify to one module and one artifact**.
 
 ## Decision
 
-Build everything in **Java 25** as a **Gradle 9.5 multi-project** (version pinned via the
-wrapper) with **three subprojects**:
+Build everything as a **single Java 25 + Micronaut module** (a single-project Gradle 9.5 build,
+version pinned via the wrapper). The one artifact hosts:
 
-- **`shared`** — a common library: the BOE client (summary enumeration + document fetch,
-  XML→txt→PDF), the parser (regex + ported bormeparser dictionaries), the normalisation
-  function, the domain model/DTOs, and the **`IngestionService`** that resolves
-  (`resolve_company`/`resolve_person`) and persists with idempotency
-  ([ADR-0007](0007-single-source-of-truth-entity-resolution.md)). It never exposes HTTP.
-- **`server`** — a **Micronaut** app: the **read-only** HTTP API **and** the **daily
-  incremental**, run in-process on the Micronaut scheduler (`@Scheduled`). The only mandatory
-  server-hosted component, stateless over PostgreSQL.
-- **`ingester`** — an offline CLI, runnable **locally/off-server**, that performs the
-  **historical backfill** (bulk staging + merge).
+- the **read-only HTTP API** ([Spec 6](../specs/06-public-api.md));
+- the **daily incremental**, run in-process on the Micronaut scheduler (`@Scheduled`); and
+- the **historical / massive import**, triggered on demand via a **gated admin HTTP endpoint**
+  (by date or by month), which runs the import asynchronously in the background.
 
-`server` and `ingester` both depend on `shared` and call the same `IngestionService`, so the
-daily and backfill paths behave identically. The parser **does not resolve identity**.
+Internal layering is by **package**, not by Gradle module
+([ADR-0014](0014-hexagonal-architecture.md)): the framework-free domain/application core and
+its driven adapters live in `net.earelin.mercator.domain` / `…infrastructure`; the Micronaut
+driving adapters (controllers, the `@Scheduled` bean, wiring) live in `…server`. Both write
+paths call the **same** ingestion logic and entity resolution
+([ADR-0007](0007-single-source-of-truth-entity-resolution.md)), so the daily and backfill paths
+behave identically. The parser **does not resolve identity**.
 
 ## Consequences
 
-- **One language, one toolchain, one build** (Gradle), with common logic defined once in
-  `shared` — directly supporting the single-source-of-truth goal
-  ([ADR-0007](0007-single-source-of-truth-entity-resolution.md)).
-- The daily incremental needs **no separate process or external scheduler** and **no HTTP
-  ingest endpoint** — it is a scheduled bean inside the already-hosted server
-  ([ADR-0006](0006-hybrid-write-path.md)).
-- The read API is **purely read-only**; there is no write surface exposed over HTTP.
-- The historical backfill still runs **offline** and never sits on the API's request path.
+- **One language, one toolchain, one build, one artifact** — the simplest thing that hosts every
+  workload on the single VPS.
+- The daily incremental needs **no separate process or external scheduler** — it is a scheduled
+  bean inside the server ([ADR-0006](0006-hybrid-write-path.md)).
+- The historical backfill no longer needs a CLI or a local run: an operator triggers it through
+  the **admin import endpoint**, which is **disabled by default** and **always authenticated**
+  ([ADR-0013](0013-api-key-auth-and-config.md)), and the import runs in-server over the bulk
+  staging + merge write path.
+- The **public** read API stays read-only; the only write surface is the gated admin endpoint —
+  a deliberate, narrow exception to "no HTTP write surface", isolated by config + auth.
 - **One-time cost:** porting bormeparser's regex/dictionary tables from Python to Java.
 - If genuine ML/NLP extraction is ever needed, Python's ecosystem is no longer at hand — a
   deliberate trade, acceptable because the design uses deterministic parsing + DB-side fuzzy
@@ -56,12 +69,13 @@ daily and backfill paths behave identically. The parser **does not resolve ident
 
 ## Alternatives considered
 
-- **Python ingester (earlier draft)** — reuses bormeparser directly, but adds a second
+- **Three Java modules (`shared`/`server`/`ingester`)** — a prior version of this ADR. The
+  library boundary and a second CLI artifact added ceremony without payoff for a rarely-run,
+  modest-volume backfill on a single-instance deployment; superseded by the single module.
+- **Python ingester (earliest draft)** — reuses bormeparser directly, but adds a second
   language/toolchain and blocks code-sharing with the server; rejected for a single Java stack.
-- **Daily incremental as a separate cron/process posting to an HTTP ingest API** — an extra
-  moving part and an HTTP endpoint whose only caller would be our own scheduler; rejected in
-  favour of an in-server `@Scheduled` job calling `shared` directly.
-- **One module (no shared library)** — would duplicate fetch/parse/persist between server and
-  ingester; rejected.
+- **Historical backfill as a separate offline CLI** — keeps the write path entirely off the
+  HTTP surface, but costs a second artifact and a local run procedure; rejected in favour of a
+  gated in-server endpoint, accepting the narrow, authenticated write surface.
 - **Micronaut vs Spring Boot** — Micronaut chosen for low memory / fast startup on a cheap VPS
   ([ADR-0011](0011-cheap-eu-vps-hosting.md)).

@@ -53,8 +53,8 @@ flowchart LR
 
 ## Acceptance criteria
 
-- A shared normalisation function produces identical output for the ingester and the SQL/Java
-  resolution callers (it is reused across the codebase and by [contracts-integration](contracts-integration.md)).
+- A shared normalisation function produces identical output across both write paths and the
+  SQL/Java resolution callers (it is reused across the codebase and by [contracts-integration](contracts-integration.md)).
 - Registry coordinates extracted correctly for the sample.
 - Roles/events map to the canonical enums with no unmapped variants on the sample.
 

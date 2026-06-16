@@ -3,12 +3,12 @@
 ## Summary
 
 An in-server scheduled job (Micronaut `@Scheduled`) that each publication day fetches the new
-BORME documents and persists them directly to PostgreSQL via the shared `IngestionService`.
+BORME documents and persists them directly to PostgreSQL via the in-server ingestion service.
 
 ## Related specs / ADRs
 
 - Specs: [2 — Ingestion](../specs/02-ingestion.md)
-- ADRs: [0005 — Three Java modules](../architecture/0005-java-ingester-and-read-api.md), [0006 — Write paths](../architecture/0006-hybrid-write-path.md), [0017 — Observability & alerting](../architecture/0017-observability-logging-and-alerting.md)
+- ADRs: [0005 — Single Micronaut module](../architecture/0005-java-ingester-and-read-api.md), [0006 — Write paths](../architecture/0006-hybrid-write-path.md), [0017 — Observability & alerting](../architecture/0017-observability-logging-and-alerting.md)
 
 ## Functional behaviour
 
@@ -17,7 +17,7 @@ BORME documents and persists them directly to PostgreSQL via the shared `Ingesti
   [summary-enumeration](summary-enumeration.md).
 - It diffs the enumerated documents against `borme_log` and processes only those not yet
   `MERGED`.
-- For each new document it calls the **shared `IngestionService`** (the same code the backfill
+- For each new document it calls the **in-server ingestion service** (the same code the backfill
   uses): fetch ([document-fetch](document-fetch.md)), parse ([act-parsing](act-parsing.md)),
   normalise ([entity-extraction-normalisation](entity-extraction-normalisation.md)), resolve
   ([entity-resolution](entity-resolution.md)) and upsert — **in-process, directly to the DB**
@@ -58,14 +58,14 @@ flowchart TD
 
 - Runs unattended inside the server; processes a day's new documents end to end.
 - Re-running (or a double-tick) the same day is a no-op (idempotent).
-- Uses the exact shared `IngestionService` — no daily-only resolution code.
+- Uses the exact same in-server ingestion service — no daily-only resolution code.
 - Runs green for a week to graduate.
 
 ## Implementation issues
 
 - [ ] Micronaut `@Scheduled` daily job + concurrency/run guard.
 - [ ] Today+yesterday enumeration and `borme_log` diffing.
-- [ ] Wire the job to the shared `IngestionService` (built in
+- [ ] Wire the job to the in-server ingestion service (built in
       [entity-resolution](entity-resolution.md); in-process upsert).
 - [ ] Errata reconciliation pass over `UNAPPLIED` corrections (shared with backfill).
 - [ ] Outcome logging + last-success heartbeat + low-confidence-match alerting ([ADR-0017](../architecture/0017-observability-logging-and-alerting.md)).

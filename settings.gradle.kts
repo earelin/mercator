@@ -11,10 +11,6 @@ dependencyResolutionManagement {
 }
 
 // Build with Gradle 9.5.1 (pinned via the wrapper: gradle/wrapper/gradle-wrapper.properties).
+// Single-project build: the root project IS the Micronaut server. The historical import runs
+// in-process as a gated admin endpoint, so there is no separate library or CLI module.
 rootProject.name = "mercator"
-
-// Gradle multi-project: three subprojects.
-// - shared:   common library (BOE client, parser, normalisation, IngestionService)
-// - server:   Micronaut read-only API + daily-incremental scheduler
-// - ingester: offline CLI for the historical backfill
-include("shared", "server", "ingester")

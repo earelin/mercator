@@ -8,10 +8,13 @@ Consequences, Alternatives considered**.
 Proposed**; only the maintainer marks one **Accepted**, and **Accepted ADRs are immutable**
 (change them only via a new superseding ADR).
 
-> **Pre-implementation exception (current phase).** While the repo is docs-only, Accepted ADRs
-> may still be **edited in place** to fix contradictions/stale references (noted in their
-> `## Status` line). This relaxation **ends when the first code lands** — after that,
-> immutability applies. See `docs/CLAUDE.md` → _ADR lifecycle & approval_.
+> **Note (2026-06).** ADR-0005/0006/0013/0014 were **amended in place** to record the
+> single-module redesign (collapsing `shared`/`server`/`ingester` into one Micronaut module and
+> moving the historical import to a gated in-server endpoint), with the change noted in each of
+> their `## Status` lines. Incidental references to the removed `ingester`/`shared` module were
+> also updated for consistency in ADR-0007/0015/0016/0018/0020. This is a maintainer-approved
+> relaxation of the post-code immutability rule for a coordinated redesign. See `docs/CLAUDE.md`
+> → _ADR lifecycle & approval_.
 
 ## Index
 
@@ -21,8 +24,8 @@ Proposed**; only the maintainer marks one **Accepted**, and **Accepted ADRs are 
 | [0002](0002-structured-xml-over-pdf-parsing.md) | Prefer structured text/XML over PDF parsing for Sección A | Accepted |
 | [0003](0003-datosabiertos-rest-api-over-legacy-xml.md) | Use the `datosabiertos` REST summary API over legacy `xml.php` | Accepted |
 | [0004](0004-postgresql-as-primary-datastore.md) | PostgreSQL as the single primary datastore | Accepted |
-| [0005](0005-java-ingester-and-read-api.md) | Three Java modules: shared library, hosted server, offline ingester | Accepted |
-| [0006](0006-hybrid-write-path.md) | Two write paths, both direct to the DB via the shared library | Accepted |
+| [0005](0005-java-ingester-and-read-api.md) | Single Micronaut module: read API, daily scheduler, and historical-import endpoint | Accepted |
+| [0006](0006-hybrid-write-path.md) | Two write paths, both in-server and direct to the DB | Accepted |
 | [0007](0007-single-source-of-truth-entity-resolution.md) | Single source of truth for entity resolution | Accepted |
 | [0008](0008-registry-coordinates-as-company-natural-key.md) | Registry coordinates (Hoja+province) as the company natural key | Accepted |
 | [0009](0009-probabilistic-person-resolution.md) | Probabilistic person resolution with confidence scores | Accepted |

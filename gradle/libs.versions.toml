@@ -4,7 +4,6 @@ postgresql     = "42.7.11"
 slf4j          = "2.0.18"
 logback        = "1.5.34"
 flyway         = "12.8.1"
-picocli        = "4.7.7"
 pdfbox         = "3.0.7"
 jsoup          = "1.22.2"
 checkstyle     = "13.4.2"
@@ -23,7 +22,6 @@ slf4j-api               = { module = "org.slf4j:slf4j-api",                     
 logback-classic         = { module = "ch.qos.logback:logback-classic",               version.ref = "logback" }
 flyway-core             = { module = "org.flywaydb:flyway-core",                     version.ref = "flyway" }
 flyway-postgresql       = { module = "org.flywaydb:flyway-database-postgresql",      version.ref = "flyway" }
-picocli                 = { module = "info.picocli:picocli",                         version.ref = "picocli" }
 pdfbox                  = { module = "org.apache.pdfbox:pdfbox",                       version.ref = "pdfbox" }
 jsoup                   = { module = "org.jsoup:jsoup",                                version.ref = "jsoup" }
 assertj-core            = { module = "org.assertj:assertj-core",                       version.ref = "assertj" }

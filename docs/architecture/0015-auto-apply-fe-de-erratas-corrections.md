@@ -33,11 +33,11 @@ squarely in line with it. `FE_ERRATAS` already exists in the act-type catalogue
   Inscripción/Asiento and Datos registrales) and the **correction** (erroneous value →
   correct value), with the raw block retained. The parser still never resolves identity
   ([ADR-0007](0007-single-source-of-truth-entity-resolution.md)).
-- **Apply in the shared path, both write paths.** The shared `IngestionService` locates the
+- **Apply in the ingestion path, both write paths.** The in-server ingestion service locates the
   prior act / derived row for the **same company and Inscripción/Datos registrales** and
-  rewrites the erroneous value to the correct one — invoked identically by the backfill merge
-  and the daily incremental ([ADR-0006](0006-hybrid-write-path.md)), so corrections behave the
-  same on both. When the corrected value is an **entity name**, resolution is re-run for that
+  rewrites the erroneous value to the correct one — invoked identically by the historical-import
+  bulk merge and the daily incremental ([ADR-0006](0006-hybrid-write-path.md)), so corrections
+  behave the same on both. When the corrected value is an **entity name**, resolution is re-run for that
   entity, which may re-point or re-score a probabilistic person
   ([ADR-0009](0009-probabilistic-person-resolution.md)).
 - **Keep an audit trail; never silently mutate.** The `FE_ERRATAS` act row is always stored,
