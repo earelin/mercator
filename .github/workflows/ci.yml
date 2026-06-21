@@ -25,6 +25,24 @@ jobs:
     name: Build & test (Gradle)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Most persistence tests use Testcontainers (self-contained), but the @MicronautTest
+    # context tests boot Hikari, which connects eagerly even with Flyway disabled — so they
+    # need a reachable Postgres, exactly as local dev provides via `docker compose up`.
+    # Image/credentials mirror docker-compose.yml and the application.yml defaults.
+    services:
+      postgres:
+        image: postgres:18.4
+        env:
+          POSTGRES_DB: mercator
+          POSTGRES_USER: mercator
+          POSTGRES_PASSWORD: change_me
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mercator -d mercator"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -41,6 +59,10 @@ jobs:
 
       - name: Build (compile + test + Checkstyle + CPD)
         run: ./gradlew build
+        env:
+          JDBC_URL: jdbc:postgresql://localhost:5432/mercator
+          DB_USER: mercator
+          DB_PASSWORD: change_me
 
       - name: Upload reports on failure
         if: failure()
