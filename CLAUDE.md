@@ -16,12 +16,15 @@ the constraints that govern it.
 
 ```bash
 ./gradlew build          # compile + test
-./gradlew test           # run tests only
+./gradlew test           # run the fast unit tests only
+./gradlew integration    # run the integration tests (controllers + adapters; needs Docker)
 ./gradlew run            # start the Micronaut server locally
-./gradlew check          # tests + Checkstyle + CPD
+./gradlew check          # unit test + Checkstyle + CPD (no Docker; excludes integration)
 ```
 
-The database must be running (`docker compose up -d`) before starting the server.
+The database must be running (`docker compose up -d`) before starting the server. The
+`integration` suite stands up its own Postgres via Testcontainers, so the Docker daemon must be
+available when running it.
 
 ## Testing conventions
 
@@ -33,6 +36,13 @@ The database must be running (`docker compose up -d`) before starting the server
 - **AssertJ** (`assertThat`) for assertions, not native JUnit assertions; **assertj-db** for
   database-backed checks.
 - Test method names are **snake_case**.
+- **Two source sets (JVM Test Suite plugin).** `src/test` holds the fast **unit** tests (the
+  `domain` core plus the pure-logic/in-memory `infrastructure` ones) — no Docker, run by
+  `./gradlew test`/`check`. `src/integration` holds the **integration** tests that cross a process
+  boundary: the controllers over Micronaut's embedded HTTP server (driven with **REST Assured**),
+  the JDBC adapters against a real Postgres (Testcontainers), and the HTTP transport over a socket.
+  Run them with `./gradlew integration` (needs Docker); they are deliberately **not** part of
+  `check`.
 - `./gradlew check` runs Checkstyle (shared config in `config/checkstyle/`) and CPD
   (duplication); keep both green.
 
