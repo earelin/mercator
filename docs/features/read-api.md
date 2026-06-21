@@ -109,7 +109,8 @@ flowchart LR
 - [ ] Pagination (default + hard max page size; truncation flag) on all collection endpoints.
 - [ ] Consistent JSON error model (`400`/`401`/`404`/`429`/`5xx`) + per-key rate limiting.
 - [ ] OpenAPI spec + API docs (document the `X-API-Key` requirement and the error/pagination shapes).
-- [ ] Contract conformance + security tests in CI: Schemathesis against the running app
-      (drift + `ignored_auth`/`negative_data_rejection`), wired as step 9 of
-      [`script/ci.sh`](../../script/ci.sh); the GitHub CI job boots the app + Postgres service
-      so the step actually runs (mirrors the script, like the other steps).
+- [ ] Contract conformance + security tests: Schemathesis against the running app
+      (drift + `ignored_auth`/`negative_data_rejection`), in a dedicated heavyweight script
+      [`script/api-conformance.sh`](../../script/api-conformance.sh) (kept out of
+      [`script/ci.sh`](../../script/ci.sh)); a GitHub job that boots the app + Postgres service
+      runs it separately from the main CI pipeline.

@@ -11,19 +11,13 @@
 #   6. Gradle build                -> ./gradlew build
 #   7. SQL lint                    -> sqlfluff lint
 #   8. OpenAPI validate + security -> spectral (spectral:oas + OWASP ruleset)
-#   9. OpenAPI <-> impl conformance + security -> schemathesis (drift + security)
 #
-# Step 8 is static (lints the contract document); step 9 is dynamic — it drives a running
-# server with cases generated from the contract to catch drift (status/schema/content-type/
-# header conformance) and security issues (e.g. ignored_auth, negative_data_rejection). It
-# needs a reachable server, so it auto-skips when none is up (e.g. while the API is still
-# being built).
+# Step 8 statically lints the contract document. The heavyweight dynamic check — driving a
+# *running* server against the contract (drift + security) — lives in a separate script,
+# ./script/api-conformance.sh (schemathesis), kept out of this pipeline deliberately.
 #
 # Run it manually:        ./script/ci.sh
 # Skip external links:    CHECK_EXTERNAL=0 ./script/ci.sh
-# API conformance:        schemathesis runs only when a server answers at $MERCATOR_BASE_URL
-#                         (default http://localhost:8080); force/skip with
-#                         RUN_SCHEMATHESIS=1/0; auth via MERCATOR_API_KEY.
 # It also runs automatically as a git pre-push hook (see .githooks/pre-push;
 # enable with: git config core.hooksPath .githooks).
 #
@@ -162,49 +156,6 @@ elif command -v npx >/dev/null 2>&1; then
   fi
 else
   err "npx not found"; fail=1
-fi
-
-# --- 9) OpenAPI <-> implementation conformance + security (schemathesis) ---
-# Property-based testing of the *running* API against the contract: generates requests from
-# docs/specs/api.openapi.yaml and asserts the responses conform (drift) while probing for
-# security issues. Schemathesis runs its full check suite by default — the conformance checks
-# (status_code/response_schema/content_type/response_headers_conformance) and the security ones
-# (negative_data_rejection — malformed input must be rejected, mirroring additionalProperties:
-# false; ignored_auth — endpoints that should require the key must enforce it, per ADR-0013).
-# Needs a reachable server, so it auto-skips when none answers at $BASE_URL — the API is still
-# being built. Each operation is resolved under its declared server (/api/v1 for reads, / for
-# the admin overrides), so $BASE_URL is just scheme+host.
-bold "OpenAPI conformance + security (schemathesis)"
-OPENAPI_FILE="docs/specs/api.openapi.yaml"
-BASE_URL="${MERCATOR_BASE_URL:-http://localhost:8080}"
-RUN_ST="${RUN_SCHEMATHESIS:-auto}"
-
-reachable=0
-if command -v curl >/dev/null 2>&1 \
-   && curl -fsS -o /dev/null --max-time 3 "$BASE_URL/api/v1/health/liveness" 2>/dev/null; then
-  reachable=1
-fi
-
-if [ ! -f "$OPENAPI_FILE" ]; then
-  err "OpenAPI doc not found: $OPENAPI_FILE"; fail=1
-elif [ "$RUN_ST" = "0" ]; then
-  echo "  (skipped — RUN_SCHEMATHESIS=0)"
-elif [ "$RUN_ST" != "1" ] && [ "$reachable" -eq 0 ]; then
-  echo "  (skipped — no server at $BASE_URL; start it and re-run, or set RUN_SCHEMATHESIS=1)"
-elif ! command -v st >/dev/null 2>&1 && ! command -v schemathesis >/dev/null 2>&1; then
-  err "schemathesis not found — install: pipx install schemathesis (or: pip install schemathesis)"; fail=1
-else
-  ST_BIN="$(command -v st || command -v schemathesis)"
-  # All checks are enabled by default; --max-examples bounds generation per operation for CI.
-  st_args=(run "$OPENAPI_FILE" --url "$BASE_URL" \
-           --max-examples "${SCHEMATHESIS_MAX_EXAMPLES:-25}")
-  # The admin endpoints require X-API-Key in every environment (ADR-0013); pass it when set.
-  [ -n "${MERCATOR_API_KEY:-}" ] && st_args+=(--header "X-API-Key: ${MERCATOR_API_KEY}")
-  if "$ST_BIN" "${st_args[@]}"; then
-    ok "OpenAPI conformance + security"
-  else
-    err "schemathesis found contract drift or security issues"; fail=1
-  fi
 fi
 
 # --- Result ---------------------------------------------------------------
