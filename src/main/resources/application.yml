@@ -16,6 +16,10 @@ datasources:
     username: ${DB_USER:`mercator`}
     password: ${DB_PASSWORD:`change_me`}
     driver-class-name: org.postgresql.Driver
+    # Micronaut Data dialect for the generated repository SQL. Flyway owns the schema, so
+    # repository schema generation stays off (ADR-0016).
+    dialect: POSTGRES
+    schema-generate: NONE
 
 flyway:
   datasources:

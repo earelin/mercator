@@ -6,6 +6,7 @@ logback        = "1.5.34"
 flyway         = "12.8.1"
 pdfbox         = "3.0.7"
 jsoup          = "1.22.2"
+jakarta-inject = "2.0.1"
 checkstyle     = "13.4.2"
 pmd            = "7.24.0"
 cpd-plugin     = "3.5"
@@ -13,6 +14,7 @@ assertj        = "3.27.7"
 assertj-db     = "3.0.2"
 mockito        = "5.23.0"
 testcontainers = "1.21.4"
+archunit       = "1.4.2"
 
 [libraries]
 junit-jupiter           = { module = "org.junit.jupiter:junit-jupiter",              version.ref = "junit-jupiter" }
@@ -24,12 +26,14 @@ flyway-core             = { module = "org.flywaydb:flyway-core",                
 flyway-postgresql       = { module = "org.flywaydb:flyway-database-postgresql",      version.ref = "flyway" }
 pdfbox                  = { module = "org.apache.pdfbox:pdfbox",                       version.ref = "pdfbox" }
 jsoup                   = { module = "org.jsoup:jsoup",                                version.ref = "jsoup" }
+jakarta-inject-api      = { module = "jakarta.inject:jakarta.inject-api",              version.ref = "jakarta-inject" }
 assertj-core            = { module = "org.assertj:assertj-core",                       version.ref = "assertj" }
 assertj-db              = { module = "org.assertj:assertj-db",                         version.ref = "assertj-db" }
 mockito-core            = { module = "org.mockito:mockito-core",                       version.ref = "mockito" }
 mockito-junit-jupiter   = { module = "org.mockito:mockito-junit-jupiter",             version.ref = "mockito" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql",               version.ref = "testcontainers" }
 testcontainers-junit    = { module = "org.testcontainers:junit-jupiter",              version.ref = "testcontainers" }
+archunit                = { module = "com.tngtech.archunit:archunit",                 version.ref = "archunit" }
 
 [plugins]
 micronaut-application = { id = "io.micronaut.application", version = "5.0.0" }

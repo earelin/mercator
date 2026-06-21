@@ -8,7 +8,7 @@ Accepted.
 
 Mercator runs **unattended on one cheap EU VPS** ([ADR-0011](0011-cheap-eu-vps-hosting.md))
 in Docker. The load-bearing operational risk is a **silently-failing daily-incremental job**:
-the Micronaut `@Scheduled` task in the `server` ([ADR-0005](0005-java-ingester-and-read-api.md),
+the Micronaut `@Scheduled` task in the `application` ([ADR-0005](0005-java-ingester-and-read-api.md),
 [ADR-0006](0006-hybrid-write-path.md)) is the only thing keeping the graph current. If it
 errors, throws on startup, or simply stops firing, **no one is watching** — the API keeps
 answering happily while the data quietly goes stale. We need to know *that* the job ran and

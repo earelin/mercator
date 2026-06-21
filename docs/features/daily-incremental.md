@@ -12,7 +12,7 @@ BORME documents and persists them directly to PostgreSQL via the in-server inges
 
 ## Functional behaviour
 
-- A **Micronaut `@Scheduled`** bean in the `server` runs on publication days. It enumerates
+- A **Micronaut `@Scheduled`** bean in the `application` package runs on publication days. It enumerates
   the summaries for **today and yesterday** (to catch late publication) via
   [summary-enumeration](summary-enumeration.md).
 - It diffs the enumerated documents against `borme_log` and processes only those not yet

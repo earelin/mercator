@@ -15,6 +15,21 @@ Proposed**; only the maintainer marks one **Accepted**, and **Accepted ADRs are 
 > also updated for consistency in ADR-0007/0015/0016/0018/0020. This is a maintainer-approved
 > relaxation of the post-code immutability rule for a coordinated redesign. See `docs/CLAUDE.md`
 > → _ADR lifecycle & approval_.
+>
+> **Note (2026-06).** ADR-0014 was further **amended in place** to permit the vendor-neutral
+> `jakarta.inject` (JSR-330) DI annotations in the domain core (dropping `@Factory` boilerplate),
+> and subsequently to allow infrastructure-facing **Micronaut tooling in the driven adapters**
+> (`io.micronaut.*` is forbidden only in the domain core). The layer boundaries are now enforced by
+> an ArchUnit test (`LayeredArchitectureTest`). Maintainer-approved in-place amendments, noted in
+> ADR-0014's `## Status` line.
+>
+> **Note (2026-06).** A further **simplification** amended ADR-0014/0005 in place: the domain core
+> is no longer required to be framework-free — domain data objects may carry `@MappedEntity` /
+> `@Serdeable` and serve directly as DB entities / API bodies (a parallel persistence row or DTO is
+> added only where the shape differs), and ArchUnit now enforces **only the inward-only dependency
+> direction**. Blocking request handling runs on **Java virtual threads**
+> (`@ExecuteOn(TaskExecutors.BLOCKING)` on Java 25). Maintainer-approved in-place amendments, noted
+> in the respective `## Status` lines.
 
 ## Index
 

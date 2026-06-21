@@ -1,4 +1,4 @@
-package net.earelin.mercator.server.imports;
+package net.earelin.mercator.application.rest.admin.imports;
 
 import io.micronaut.context.annotation.Requires;
 import io.micronaut.http.HttpResponse;
@@ -8,6 +8,8 @@ import io.micronaut.http.annotation.Controller;
 import io.micronaut.http.annotation.Get;
 import io.micronaut.http.annotation.PathVariable;
 import io.micronaut.http.annotation.Post;
+import io.micronaut.scheduling.TaskExecutors;
+import io.micronaut.scheduling.annotation.ExecuteOn;
 import io.micronaut.serde.annotation.Serdeable;
 import java.net.URI;
 import java.time.LocalDate;
@@ -29,6 +31,7 @@ import net.earelin.mercator.domain.ingest.JobStore;
  */
 @Requires(property = "mercator.imports.historical.enabled", value = "true")
 @Controller("/admin/imports")
+@ExecuteOn(TaskExecutors.BLOCKING)
 public class HistoricalImportController {
 
     static final String BASE_PATH = "/admin/imports";

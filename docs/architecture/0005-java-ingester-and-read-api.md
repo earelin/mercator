@@ -8,7 +8,12 @@ ingester or shared library.)*
 Accepted. *(Updated 2026-06: collapsed the three-module split — `shared`/`server`/`ingester` —
 into a **single Micronaut module**; the offline backfill CLI is removed and the historical
 import now runs in-server behind a gated admin endpoint. A maintainer-approved redesign for
-simplicity; superseding-ADR immutability is relaxed for this amendment — see Context.)*
+simplicity; superseding-ADR immutability is relaxed for this amendment — see Context.)* *(Updated
+2026-06: row-by-row database access uses **Micronaut Data JDBC** — see the persistence paragraph
+under Decision. Maintainer-approved in-place amendment.)* *(Updated 2026-06: persistence entities
+are the **domain objects themselves** (`@MappedEntity` on the domain record, no parallel row), and
+blocking request handling runs on **Java virtual threads** via `@ExecuteOn(TaskExecutors.BLOCKING)`.
+Maintainer-approved in-place amendment.)*
 
 ## Context
 
@@ -43,12 +48,30 @@ version pinned via the wrapper). The one artifact hosts:
   (by date or by month), which runs the import asynchronously in the background.
 
 Internal layering is by **package**, not by Gradle module
-([ADR-0014](0014-hexagonal-architecture.md)): the framework-free domain/application core and
-its driven adapters live in `net.earelin.mercator.domain` / `…infrastructure`; the Micronaut
-driving adapters (controllers, the `@Scheduled` bean, wiring) live in `…server`. Both write
+([ADR-0014](0014-hexagonal-architecture.md)): the domain/application core and its driven adapters
+live in `net.earelin.mercator.domain` / `…infrastructure`; the Micronaut driving adapters
+(controllers, the `@Scheduled` bean, wiring) live in `…application`. Both write
 paths call the **same** ingestion logic and entity resolution
 ([ADR-0007](0007-single-source-of-truth-entity-resolution.md)), so the daily and backfill paths
 behave identically. The parser **does not resolve identity**.
+
+Row-by-row database access (the daily incremental, the `borme_log` idempotency record, and the
+calls into the `resolve_*` functions of [ADR-0007](0007-single-source-of-truth-entity-resolution.md))
+goes through **Micronaut Data JDBC** — compile-time `@JdbcRepository` interfaces with no reflection
+or runtime proxies, fitting the low-memory/fast-startup goal — living in the `…infrastructure`
+adapters. The **mapped entity is the domain object itself** (e.g. `BormeLogEntry` carries
+`@MappedEntity`), not a parallel persistence row; a repository may also implement a core port
+directly. Conflict/upsert and function-call semantics use explicit `@Query` SQL, and an
+`AttributeConverter` covers any enum stored as a custom value. Flyway remains the single owner of
+the schema ([ADR-0016](0016-database-schema-migrations.md)) (repository schema generation is off);
+the **bulk** historical import keeps its raw staging-table `COPY` + SQL merge
+([ADR-0006](0006-hybrid-write-path.md)) rather than per-row repository writes. No JPA/Hibernate.
+
+Blocking request handling runs on **Java virtual threads**: controllers (and future scheduled /
+async jobs) that do blocking I/O are annotated `@ExecuteOn(TaskExecutors.BLOCKING)`, which on Java
+25 is a virtual-thread-per-task executor automatically. This keeps high request concurrency cheap
+on the single VPS ([ADR-0011](0011-cheap-eu-vps-hosting.md)) without adopting a reactive
+programming model — consistent with the "keep it simple" mandate.
 
 ## Consequences
 
