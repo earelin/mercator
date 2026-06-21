@@ -75,6 +75,36 @@ INSERT INTO province (code, name) VALUES
     ('51', 'Ceuta'),
     ('52', 'Melilla');
 
+-- role: canonical cargo (appointment role) vocabulary.
+-- Codes are the canonical enum that the parser/normaliser maps every BORME cargo spelling
+-- variant onto (docs/specs/03-extraction.md §Roles,
+-- docs/features/entity-extraction-normalisation.md). appointment.role references this table.
+-- Seeded from the documented vocabulary; the bormeparser cargo-dictionary port (act-parsing.md)
+-- may add further codes via a later additive migration.
+CREATE TABLE role (
+    code        TEXT NOT NULL,
+    description TEXT NOT NULL,
+    CONSTRAINT pk_role PRIMARY KEY (code)
+);
+
+INSERT INTO role (code, description) VALUES
+    ('ADM_UNICO',     'Administrador único'),
+    ('ADM_SOLIDARIO', 'Administrador solidario'),
+    ('ADM_MANCOMUN',  'Administrador mancomunado'),
+    ('CONSEJERO',     'Consejero'),
+    ('PRESIDENTE',    'Presidente'),
+    ('SECRETARIO',    'Secretario'),
+    ('CONS_DEL_SOL',  'Consejero delegado solidario'),
+    ('CON_DELEGADO',  'Consejero delegado'),
+    ('APODERADO',     'Apoderado'),
+    ('APO_SOL',       'Apoderado solidario'),
+    ('APO_MANC',      'Apoderado mancomunado'),
+    ('LIQUIDADOR',    'Liquidador'),
+    ('LIQ_UNICO',     'Liquidador único'),
+    ('AUDITOR',       'Auditor'),
+    ('AUD_C_CON',     'Auditor de cuentas consolidadas'),
+    ('SOCIO_UNICO',   'Socio único');
+
 -- ---------------------------------------------------------------------------
 -- Live entities
 -- ---------------------------------------------------------------------------
@@ -179,7 +209,8 @@ CREATE TABLE appointment (
     act_id     BIGINT    NOT NULL REFERENCES borme_act (id),
     valid_from DATE      NOT NULL,
     valid_to   DATE,
-    CONSTRAINT pk_appointment PRIMARY KEY (id)
+    CONSTRAINT pk_appointment      PRIMARY KEY (id),
+    CONSTRAINT fk_appointment_role FOREIGN KEY (role) REFERENCES role (code)
 );
 
 -- Partial index for close_appointment_interval(): UPDATE … WHERE
