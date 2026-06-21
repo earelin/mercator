@@ -1,0 +1,158 @@
+# Continuous integration: mirrors script/ci.sh on every PR and every push to trunk.
+# Each shell tool-invocation in the script is replaced by a maintained third-party
+# action where one exists; actions are pinned to a commit SHA (version in the comment).
+# Link checking (lychee) lives in link-check.yml — it runs on a schedule, not per-PR.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [trunk]
+
+# Supersede in-flight runs for the same branch/PR.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ci.sh steps 5 + 6: ./gradlew check (Checkstyle, CPD, tests) and ./gradlew build.
+  # `build` depends on `check`, so one invocation covers both. Tests stand up a real
+  # Postgres via Testcontainers, which uses the Docker daemon present on ubuntu-latest.
+  build:
+    name: Build & test (Gradle)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Most persistence tests use Testcontainers (self-contained), but the @MicronautTest
+    # context tests boot Hikari, which connects eagerly even with Flyway disabled — so they
+    # need a reachable Postgres, exactly as local dev provides via `docker compose up`.
+    # Image/credentials mirror docker-compose.yml and the application.yml defaults.
+    services:
+      postgres:
+        image: postgres:18.4
+        env:
+          POSTGRES_DB: mercator
+          POSTGRES_USER: mercator
+          POSTGRES_PASSWORD: change_me
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mercator -d mercator"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@ad2b38190b15e4d6bdf0c97fb4fca8412226d287 # v5.3.0
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      # Caches Gradle dependencies/build state and validates the wrapper checksum.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+
+      - name: Build (compile + test + Checkstyle + CPD)
+        run: ./gradlew build
+        env:
+          JDBC_URL: jdbc:postgresql://localhost:5432/mercator
+          DB_USER: mercator
+          DB_PASSWORD: change_me
+
+      - name: Upload reports on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: reports
+          path: build/reports/
+          if-no-files-found: ignore
+
+  # ci.sh step 1: markdown formatting, and step 3: Mermaid diagram syntax.
+  docs:
+    name: Markdown & Mermaid
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      # Reads the repo's .markdownlint-cli2.jsonc (its `ignores` skip build/node_modules/etc.).
+      - name: Markdown lint
+        uses: DavidAnson/markdownlint-cli2-action@ded1f9488f68a970bc66ea5619e13e9b52e601cd # v23.2.0
+        with:
+          globs: '**/*.md'
+
+      # No maintained action exists for Mermaid validation, so this stays a script-style
+      # step: render every diagram with mermaid-cli, failing on any syntax error. mmdc uses
+      # puppeteer, which ships no browser — point it at the Chrome preinstalled on the runner.
+      - name: Validate Mermaid diagrams
+        shell: bash
+        run: |
+          set -uo pipefail
+          files=$(grep -rl --include='*.md' \
+            --exclude-dir=node_modules --exclude-dir=build --exclude-dir=.gradle \
+            --exclude-dir=.git --exclude-dir=tmp '```mermaid' . || true)
+          if [ -z "$files" ]; then echo "No Mermaid diagrams to validate."; exit 0; fi
+
+          chrome="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium-browser || true)"
+          if [ -z "$chrome" ]; then echo "::error::no Chrome/Chromium found on the runner"; exit 1; fi
+
+          out=.mermaid/tmp; mkdir -p "$out"
+          printf '{ "executablePath": "%s", "args": ["--no-sandbox", "--disable-setuid-sandbox"] }\n' \
+            "$chrome" > "$out/puppeteer.json"
+
+          rc=0
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            safe="${f//\//_}"
+            if npx -y -p @mermaid-js/mermaid-cli mmdc \
+                 -i "$f" -o "$out/${safe}.svg" -p "$out/puppeteer.json" --quiet; then
+              echo "ok: $f"
+            else
+              echo "::error file=$f::invalid Mermaid diagram"; rc=1
+            fi
+          done <<< "$files"
+          exit $rc
+
+  # ci.sh step 4: Docker Compose lint (mirrors `npx dclint .`; emits GitHub annotations).
+  compose:
+    name: Docker Compose lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: dclint
+        uses: docker-compose-linter/dclint-github-action@18659f6a7956706cb67cf9c1ad5e55f4352cbc17 # v1.6.0
+        with:
+          path: .
+          formatter: github
+
+  # ci.sh step 7: SQL lint. No packaged action exists; sqlfluff ships workflow templates
+  # using setup-python + pip, which is what this mirrors. Config lives in the repo's .sqlfluff.
+  sql:
+    name: SQL lint (sqlfluff)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.x'
+          cache: pip
+          cache-dependency-path: .sqlfluff
+
+      - name: Install sqlfluff
+        run: pip install sqlfluff
+
+      - name: sqlfluff lint
+        run: sqlfluff lint src/main/resources/db/migration --format github-annotation-native
