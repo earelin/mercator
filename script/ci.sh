@@ -12,6 +12,10 @@
 #   7. SQL lint                    -> sqlfluff lint
 #   8. OpenAPI validate + security -> spectral (spectral:oas + OWASP ruleset)
 #
+# Step 8 statically lints the contract document. The heavyweight dynamic check — driving a
+# *running* server against the contract (drift + security) — lives in a separate script,
+# ./script/api-conformance.sh (schemathesis), kept out of this pipeline deliberately.
+#
 # Run it manually:        ./script/ci.sh
 # Skip external links:    CHECK_EXTERNAL=0 ./script/ci.sh
 # It also runs automatically as a git pre-push hook (see .githooks/pre-push;

@@ -69,10 +69,9 @@ paths:
       summary: Search companies
       description: |
         Ranked company matches using `pg_trgm` trigram similarity over the normalised
-        name, optionally filtered by province. Suppressed companies are not returned.
+        name. Suppressed companies are not returned.
       parameters:
         - $ref: '#/components/parameters/SearchQuery'
-        - $ref: '#/components/parameters/ProvinceFilter'
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PageSize'
       responses:
@@ -96,9 +95,10 @@ paths:
       tags: [Companies]
       summary: Get company detail
       description: |
-        A company with its acts, current and historical administrators (from appointment
-        intervals) and current/historical registered addresses. Suppressed rows are
-        filtered out of the nested collections.
+        A company with its acts, the appointments and registered address currently in force,
+        and — separately — the closed (past) appointment and address intervals, each carrying
+        a reference to the BORME act that recorded it. Suppressed rows are filtered out of the
+        nested collections.
       parameters:
         - $ref: '#/components/parameters/EntityId'
       responses:
@@ -280,6 +280,40 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Health' }
 
+  /admin/imports:
+    servers:
+      - url: /
+        description: |
+          Admin endpoints are served at the server root, off the public `/api/v1` read
+          namespace (ADR-0006/0013). Gated by `mercator.imports.historical.enabled`:
+          when the gate is off the routes are absent (404), not merely forbidden.
+    post:
+      operationId: importAll
+      tags: [Admin]
+      summary: Trigger a full historical import (2009→present)
+      description: |
+        Queues a massive historical import covering the entire BORME Sección A history from
+        2009-01-02 to the present and returns immediately. The crawl is resumable and
+        idempotent (ADR-0006) and proceeds in incremental (ascending) date order as a sequence
+        of monthly imports; no request body is needed. Poll the returned `statusUrl` for
+        progress (the date and province currently being imported). Always requires the
+        `X-API-Key`, including in local dev where reads are anonymous (ADR-0013).
+      responses:
+        '202':
+          description: Import accepted; the job is queued.
+          headers:
+            Location: { $ref: '#/components/headers/JobLocation' }
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /admin/imports/by-date:
     servers:
       - url: /
@@ -294,8 +328,9 @@ paths:
       description: |
         Queues a massive historical import covering a single BORME publication day and
         returns immediately. The import runs asynchronously (staging tables + SQL merge,
-        ADR-0006); poll the returned `statusUrl` for progress. Always requires the
-        `X-API-Key`, including in local dev where reads are anonymous (ADR-0013).
+        ADR-0006); poll the returned `statusUrl` for progress (the date and province currently
+        being imported). Always requires the `X-API-Key`, including in local dev where reads
+        are anonymous (ADR-0013).
       requestBody:
         required: true
         content:
@@ -330,9 +365,11 @@ paths:
       summary: Trigger a historical import for one calendar month
       description: |
         Queues a massive historical import covering a whole calendar month and returns
-        immediately. The import runs asynchronously (staging tables + SQL merge,
-        ADR-0006); poll the returned `statusUrl` for progress. Always requires the
-        `X-API-Key`, including in local dev where reads are anonymous (ADR-0013).
+        immediately. The import runs asynchronously (staging tables + SQL merge, ADR-0006),
+        processing the month's publication days in incremental (ascending) date order; poll
+        the returned `statusUrl` for progress (the date and province currently being
+        imported). Always requires the `X-API-Key`, including in local dev where reads are
+        anonymous (ADR-0013).
       requestBody:
         required: true
         content:
@@ -366,9 +403,11 @@ paths:
       tags: [Admin]
       summary: Get historical-import job status
       description: |
-        Returns the current status of a previously accepted historical-import job. Poll
-        until `status` reaches a terminal `COMPLETED` or `FAILED`. Always requires the
-        `X-API-Key` (ADR-0013).
+        Returns the current status of a previously accepted historical-import job. While the
+        job is RUNNING the response carries a `progress` object naming the publication date and
+        province currently being imported (imports advance in incremental, ascending date
+        order). Poll until `status` reaches a terminal `COMPLETED` or `FAILED`. Always requires
+        the `X-API-Key` (ADR-0013).
       parameters:
         - $ref: '#/components/parameters/JobId'
       responses:
@@ -417,12 +456,6 @@ components:
         type: string
         minLength: 1
         maxLength: 200
-    ProvinceFilter:
-      name: province
-      in: query
-      required: false
-      description: Two-letter province code to filter the results.
-      schema: { $ref: '#/components/schemas/ProvinceCode' }
     Overlap:
       name: overlap
       in: query
@@ -811,6 +844,46 @@ components:
           $ref: '#/components/schemas/NullableDateValue'
       additionalProperties: false
 
+    ActReference:
+      type: object
+      description: |
+        A compact, self-contained reference to the BORME act that recorded a historical
+        interval — the Datos registrales locator.
+      required: [act_id, borme_id, pub_date]
+      properties:
+        act_id: { $ref: '#/components/schemas/SerialId' }
+        borme_id:
+          type: string
+          maxLength: 100
+          examples: ['BORME-A-2024-100-36']
+        pub_date: { $ref: '#/components/schemas/DateValue' }
+        datos_registrales:
+          type: [string, 'null']
+          maxLength: 500
+        inscripcion:
+          type: [string, 'null']
+          description: Inscripción/Asiento number.
+          maxLength: 100
+      additionalProperties: false
+
+    AppointmentHistoryEntry:
+      type: object
+      description: A closed (past) appointment interval plus a reference to its source act.
+      required: [appointment, reference]
+      properties:
+        appointment: { $ref: '#/components/schemas/Appointment' }
+        reference: { $ref: '#/components/schemas/ActReference' }
+      additionalProperties: false
+
+    CompanyAddressHistoryEntry:
+      type: object
+      description: A closed (past) registered-address interval plus a reference to its source act.
+      required: [address, reference]
+      properties:
+        address: { $ref: '#/components/schemas/CompanyAddress' }
+        reference: { $ref: '#/components/schemas/ActReference' }
+      additionalProperties: false
+
     CompanySearchResult:
       type: object
       description: A company match with its trigram similarity score.
@@ -827,22 +900,37 @@ components:
 
     CompanyDetail:
       type: object
-      description: A company plus its acts, temporal appointments and address history.
-      required: [company, acts, appointments, addresses]
+      description: |
+        A company plus its acts, the appointments and registered address currently in force,
+        and the closed (past) appointment and address intervals — each history entry carrying
+        a reference to the BORME act that recorded it.
+      required: [company, acts, current_appointments, current_address, appointment_history, address_history]
       properties:
         company: { $ref: '#/components/schemas/Company' }
         acts:
           type: array
           maxItems: 10000
           items: { $ref: '#/components/schemas/BormeAct' }
-        appointments:
+        current_appointments:
           type: array
+          description: Appointments currently in force (open interval — valid_to is null).
           maxItems: 10000
           items: { $ref: '#/components/schemas/Appointment' }
-        addresses:
+        current_address:
+          description: The current registered address (open interval), or null if none is on record.
+          oneOf:
+            - $ref: '#/components/schemas/CompanyAddress'
+            - type: 'null'
+        appointment_history:
           type: array
+          description: Closed (past) appointment intervals, each with a reference to its source act.
           maxItems: 10000
-          items: { $ref: '#/components/schemas/CompanyAddress' }
+          items: { $ref: '#/components/schemas/AppointmentHistoryEntry' }
+        address_history:
+          type: array
+          description: Closed (past) registered-address intervals, each with a reference to its source act.
+          maxItems: 10000
+          items: { $ref: '#/components/schemas/CompanyAddressHistoryEntry' }
       additionalProperties: false
 
     PersonCompanyAssociation:
@@ -1075,13 +1163,15 @@ components:
           examples: ['018f1a2b-3c4d-7e6f-8a9b-0c1d2e3f4a5b']
         kind:
           type: string
-          description: Whether the import targets a single day or a whole month.
-          enum: [BY_DATE, BY_MONTH]
+          description: Whether the import targets a single day, a whole month, or all history.
+          enum: [BY_DATE, BY_MONTH, FULL]
         target:
           type: string
-          description: The ISO target covered — YYYY-MM-DD for BY_DATE, YYYY-MM for BY_MONTH.
-          maxLength: 10
-          examples: ['2024-05-20']
+          description: |
+            The ISO target covered — YYYY-MM-DD for BY_DATE, YYYY-MM for BY_MONTH, an ISO date
+            range (from/to) for FULL.
+          maxLength: 25
+          examples: ['2009-01-02/2026-06-21']
         status:
           type: string
           description: Lifecycle status of the job.
@@ -1090,12 +1180,38 @@ components:
           type: string
           description: Human-readable detail, e.g. a failure reason. Absent while none applies.
           maxLength: 2000
+        progress:
+          description: |
+            Live progress, present only while `status` is RUNNING — the publication date and
+            province currently being imported. Imports always advance in incremental
+            (ascending) date order, so this date moves monotonically forward. Absent before
+            the job starts running and after it reaches a terminal state.
+          oneOf:
+            - $ref: '#/components/schemas/ImportProgress'
+            - type: 'null'
         statusUrl:
           type: string
           format: uri-reference
           description: Relative URL to poll for this job's status.
           maxLength: 200
           examples: ['/admin/imports/018f1a2b-3c4d-7e6f-8a9b-0c1d2e3f4a5b']
+      additionalProperties: false
+
+    ImportProgress:
+      type: object
+      description: |
+        The point a RUNNING import has currently reached. Because imports execute in
+        incremental (ascending) date order, `current_date` advances monotonically.
+      required: [current_date, current_province]
+      properties:
+        current_date:
+          type: string
+          format: date
+          description: The BORME publication day currently being imported (ISO-8601, YYYY-MM-DD).
+          maxLength: 10
+          examples: ['2024-05-20']
+        current_province:
+          $ref: '#/components/schemas/ProvinceCode'
       additionalProperties: false
 
     Problem:
