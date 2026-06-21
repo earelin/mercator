@@ -42,8 +42,8 @@ Live tables (conceptual columns; see [Spec 4](../specs/04-data-model.md)):
   `act_type` sharing one `datos_registrales` in one document — e.g. two ceses — from colliding
   under `ON CONFLICT DO NOTHING`, while re-processing the same document still produces the same
   `doc_seq` ordering and so remains a true no-op.)*
-- **appointment** — `company_id`, `person_id`, `role`, `event_type`, `act_id`, `valid_from`,
-  `valid_to`.
+- **appointment** — `company_id`, `person_id`, `role` (FK → `role`, the canonical cargo
+  vocabulary), `event_type`, `act_id`, `valid_from`, `valid_to`.
 - **company_address** — `company_id`, `address_id`, `valid_from`, `valid_to`.
 - **act_correction** — the audit trail for *Fe de erratas* ([ADR-0015](../architecture/0015-auto-apply-fe-de-erratas-corrections.md)):
   `errata_act_id` (the `FE_ERRATAS` `borme_act`); the **target locator** as a single canonical
@@ -138,4 +138,6 @@ flowchart LR
       `suppression` + `erasure_log`; all indexes, UNIQUE/idempotency constraints (incl. the
       `doc_seq` discriminator); and the temporal-interval functions.
 - [x] Migration tooling/runner (Flyway) wired into deployment ([ADR-0016](../architecture/0016-database-schema-migrations.md)).
-- [ ] Role enum: `appointment.role` constraint/seed table (deferred — BORME role vocabulary needs bormeparser dictionary port first).
+- [x] Role enum: `appointment.role` seed table (`role`) + FK, seeded from the documented canonical
+      cargo vocabulary ([Spec 3](../specs/03-extraction.md) §Roles); the bormeparser cargo-dictionary
+      port ([act-parsing](act-parsing.md)) may extend it via a later additive migration.
