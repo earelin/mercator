@@ -1,4 +1,4 @@
-package net.earelin.mercator.server.imports;
+package net.earelin.mercator.application.rest.admin.imports;
 
 import jakarta.inject.Singleton;
 import java.time.Instant;

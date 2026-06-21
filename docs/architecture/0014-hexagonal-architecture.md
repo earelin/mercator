@@ -5,7 +5,14 @@
 Accepted. *(Updated 2026-06: the layers are now separated by **package** within a single module
 rather than across `shared`/`server`/`ingester`; the offline-CLI driving adapter is replaced by
 the in-server import controller. Maintainer-approved redesign amendment — see
-[ADR-0005](0005-java-ingester-and-read-api.md).)*
+[ADR-0005](0005-java-ingester-and-read-api.md).)* *(Updated 2026-06: the domain core may carry the
+vendor-neutral `jakarta.inject` (JSR-330) DI annotations to drop `@Factory` boilerplate; only
+Micronaut-specific (`io.micronaut.*`) types stay forbidden in the core. Maintainer-approved
+in-place amendment — see the **Domain core** bullet under Decision.)* *(Updated 2026-06: the
+**driven adapters** (`…infrastructure`) may now use infrastructure-facing Micronaut tooling —
+`io.micronaut.*` is forbidden **only** in the domain core, not the whole non-application surface;
+the layer boundaries are now enforced by an ArchUnit test. Maintainer-approved in-place
+amendment.)*
 
 ## Context
 
@@ -38,7 +45,20 @@ The aim is that anyone reading the code can tell business logic from I/O at a gl
   use-case/application services (parsing, normalisation, the ingestion service). It depends on
   **nothing** outward: no Micronaut, no JDBC, no HTTP client. Dependencies point **inward only**.
   The boundary is now enforced by **package** within the single module rather than by a separate
-  Gradle library.
+  Gradle library. **DI annotations — the standard only.** The core *may* carry the vendor-neutral
+  `jakarta.inject` (JSR-330) annotations (`@Singleton`, `@Inject`, `@Named`, `@Qualifier`) plus the
+  `jakarta.annotation` lifecycle markers, so application services are auto-discovered as beans
+  instead of each needing a hand-written `@Factory`. These are pure wiring metadata readable by any
+  compliant container; constructors stay public and usable from a plain `new` in unit tests, so the
+  core is **not** coupled to Micronaut. Every **Micronaut-specific** type stays forbidden in the
+  core — `io.micronaut.*`, including `@Factory`, `@Bean`, `@Value`, `@Property`,
+  `@ConfigurationProperties`, `@Scheduled`, `@Controller` and all HTTP/JDBC/serde types; the core
+  depends on `jakarta.inject:jakarta.inject-api` directly so it compiles against the standard, not
+  transitively via Micronaut. This is enforced by an **ArchUnit** test (`LayeredArchitectureTest`,
+  run in `./gradlew check`): the `…domain` packages may not depend on `io.micronaut..`, JDBC
+  (`java.sql`/`javax.sql`), HTTP (`java.net.http`) or the parser libraries (jsoup/PDFBox) —
+  Micronaut's synthetic `$…$Definition` beans (annotated `@Generated`) are excluded, since those
+  are generated, not hand-written core code.
 - **Ports** — interfaces *owned by the core* expressing what it needs and offers:
   - *Driven (outbound) ports* — e.g. a `BormeGateway` (enumerate summary + fetch a document,
     encapsulating the XML→txt→PDF fallback), and a persistence/resolution port that exposes
@@ -48,13 +68,23 @@ The aim is that anyone reading the code can tell business logic from I/O at a gl
 - **Adapters** — implementations at the edges, depending **on** the core, never the reverse:
   - *Driven adapters* (in `net.earelin.mercator.infrastructure`): the BOE HTTP client; the
     PostgreSQL/JDBC persistence adapter that invokes the PL/pgSQL resolution functions and link
-    queries; the in-memory import-job store.
-  - *Driving adapters* (in `net.earelin.mercator.server`): the Micronaut HTTP controllers (read
-    API), the `@Scheduled` daily-incremental bean, and the historical-import controller + async
-    runner driving the bulk staging-table + merge path.
-- **Wiring** — Micronaut dependency injection composes ports to adapters in the `…server`
-  packages (`@Factory` methods). Framework annotations live in the driving adapters and wiring,
-  **not** in the domain core or the driven adapters.
+    queries; the in-memory import-job store. These **may use infrastructure-facing Micronaut
+    tooling** where it pulls its weight (config binding, the declarative HTTP client,
+    caching/retry); only the *driving*-side framework concerns (controllers, the scheduler) are
+    reserved to the application layer. The unit-test isolation still holds: an adapter is exercised
+    against its real backing tech, while the core is tested with a hand-written stub of the port.
+  - *Driving adapters* (in `net.earelin.mercator.application`): the Micronaut HTTP controllers
+    (read API, under `application.rest`; the gated admin import endpoint under
+    `application.rest.admin.imports`), the `@Scheduled` daily-incremental bean, and the
+    historical-import controller + async runner driving the bulk staging-table + merge path.
+- **Wiring** — Micronaut dependency injection composes ports to adapters. A `@Factory` method in
+  the `…application` packages is the right tool when construction is non-trivial (a bean built from
+  configuration, a choice between implementations, an object that must not know it is a bean); a
+  framework-free core service that simply needs its ports injected instead carries a
+  `jakarta.inject` `@Singleton` and is auto-discovered (see the **Domain core** bullet).
+  Micronaut-specific types (`io.micronaut.*`) are confined to the **outer layers** — the driving
+  adapters + wiring (`…application`) and, where it earns its keep, the driven adapters
+  (`…infrastructure`); they are **never** allowed in the domain core.
 
 **Reconciliation with DB-side resolution ([ADR-0007](0007-single-source-of-truth-entity-resolution.md)).**
 Entity resolution intentionally lives in PL/pgSQL, which sits in tension with "all domain
@@ -86,7 +116,7 @@ or the core easier to test?* If none of those, leave it out.
   VPS ([ADR-0011](0011-cheap-eu-vps-hosting.md)) without coupling the core to it.
 - The package split ([ADR-0005](0005-java-ingester-and-read-api.md)) maps cleanly onto
   core+ports (`…domain`) + driven-adapters (`…infrastructure`) vs. driving-adapters+wiring
-  (`…server`), and the two write paths become two driving usages over the same ingestion use
+  (`…application`), and the two write paths become two driving usages over the same ingestion use
   case — the `@Scheduled` daily bean and the import controller's async runner.
 - **Cost:** more interfaces and mapping (domain objects ↔ DTOs ↔ persistence rows) than a
   layered design — accepted as the price of isolation, and bounded by the pragmatic-scope rule.
@@ -98,7 +128,9 @@ or the core easier to test?* If none of those, leave it out.
   harder to test the core in isolation. Rejected.
 - **Framework-centric (Micronaut annotations throughout, anemic services)** — fastest to
   write, but couples the domain to the framework and the DB, undermining the swappability
-  (AGE escalation, source/format changes) and testability we want. Rejected.
+  (AGE escalation, source/format changes) and testability we want. Rejected — note this is
+  distinct from admitting the *vendor-neutral* `jakarta.inject` standard into the core, which
+  carries no framework types and is allowed (see the **Domain core** bullet).
 - **Full Clean/Onion architecture with strict use-case interactors everywhere** — same intent
   as hexagonal but heavier ceremony than a project this size warrants; we take ports/adapters
   and the pragmatic-scope rule instead. Rejected as over-engineering for V1.

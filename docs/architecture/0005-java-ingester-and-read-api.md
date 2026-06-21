@@ -8,7 +8,9 @@ ingester or shared library.)*
 Accepted. *(Updated 2026-06: collapsed the three-module split — `shared`/`server`/`ingester` —
 into a **single Micronaut module**; the offline backfill CLI is removed and the historical
 import now runs in-server behind a gated admin endpoint. A maintainer-approved redesign for
-simplicity; superseding-ADR immutability is relaxed for this amendment — see Context.)*
+simplicity; superseding-ADR immutability is relaxed for this amendment — see Context.)* *(Updated
+2026-06: row-by-row database access uses **Micronaut Data JDBC** — see the persistence paragraph
+under Decision. Maintainer-approved in-place amendment.)*
 
 ## Context
 
@@ -45,10 +47,20 @@ version pinned via the wrapper). The one artifact hosts:
 Internal layering is by **package**, not by Gradle module
 ([ADR-0014](0014-hexagonal-architecture.md)): the framework-free domain/application core and
 its driven adapters live in `net.earelin.mercator.domain` / `…infrastructure`; the Micronaut
-driving adapters (controllers, the `@Scheduled` bean, wiring) live in `…server`. Both write
+driving adapters (controllers, the `@Scheduled` bean, wiring) live in `…application`. Both write
 paths call the **same** ingestion logic and entity resolution
 ([ADR-0007](0007-single-source-of-truth-entity-resolution.md)), so the daily and backfill paths
 behave identically. The parser **does not resolve identity**.
+
+Row-by-row database access (the daily incremental, the `borme_log` idempotency record, and the
+calls into the `resolve_*` functions of [ADR-0007](0007-single-source-of-truth-entity-resolution.md))
+goes through **Micronaut Data JDBC** — compile-time `@JdbcRepository` interfaces with no reflection
+or runtime proxies, fitting the low-memory/fast-startup goal — living in the `…infrastructure`
+adapters behind the core-owned ports. Conflict/upsert and function-call semantics use explicit
+`@Query` SQL. Flyway remains the single owner of the schema ([ADR-0016](0016-database-schema-migrations.md))
+(repository schema generation is off); the **bulk** historical import keeps its raw staging-table
+`COPY` + SQL merge ([ADR-0006](0006-hybrid-write-path.md)) rather than per-row repository writes.
+No JPA/Hibernate.
 
 ## Consequences
 

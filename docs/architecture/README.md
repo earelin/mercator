@@ -15,6 +15,13 @@ Proposed**; only the maintainer marks one **Accepted**, and **Accepted ADRs are 
 > also updated for consistency in ADR-0007/0015/0016/0018/0020. This is a maintainer-approved
 > relaxation of the post-code immutability rule for a coordinated redesign. See `docs/CLAUDE.md`
 > → _ADR lifecycle & approval_.
+>
+> **Note (2026-06).** ADR-0014 was further **amended in place** to permit the vendor-neutral
+> `jakarta.inject` (JSR-330) DI annotations in the domain core (dropping `@Factory` boilerplate),
+> and subsequently to allow infrastructure-facing **Micronaut tooling in the driven adapters**
+> (`io.micronaut.*` is forbidden only in the domain core). The layer boundaries are now enforced by
+> an ArchUnit test (`LayeredArchitectureTest`). Maintainer-approved in-place amendments, noted in
+> ADR-0014's `## Status` line.
 
 ## Index
 

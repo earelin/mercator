@@ -23,14 +23,16 @@ micronaut {
     testRuntime("junit5")
     processing {
         incremental(true)
-        // All Micronaut beans (controllers, @Factory wiring, the @Scheduled job) live under
-        // net.earelin.mercator.server; the domain/infrastructure packages stay framework-free.
-        annotations("net.earelin.mercator.server.*")
+        // Bean/repository definitions are generated for the whole tree: the application driving
+        // adapters + wiring, the infrastructure driven adapters (incl. the Micronaut Data
+        // repositories), and the domain core where its application services carry the
+        // vendor-neutral jakarta.inject (JSR-330) annotations (ADR-0014).
+        annotations("net.earelin.mercator.*")
     }
 }
 
 application {
-    mainClass = "net.earelin.mercator.server.Application"
+    mainClass = "net.earelin.mercator.application.Application"
 }
 
 dependencies {
@@ -40,12 +42,22 @@ dependencies {
     implementation(libs.slf4j.api)
     implementation(libs.jsoup)
     implementation(libs.pdfbox)
+    // Vendor-neutral JSR-330 DI annotations (@Singleton/@Inject) for the domain core — depended on
+    // directly so the core compiles against the standard, not transitively via Micronaut
+    // (ADR-0014). Micronaut supplies the implementation that reads them at the boundary.
+    implementation(libs.jakarta.inject.api)
 
     // Micronaut runtime: HTTP API, JSON serialization, Flyway migrations, JDBC/HikariCP.
     implementation("io.micronaut:micronaut-http-server-netty")
     implementation("io.micronaut.serde:micronaut-serde-jackson")
     implementation("io.micronaut.flyway:micronaut-flyway")
     implementation("io.micronaut.sql:micronaut-jdbc-hikari")
+    // Micronaut Data JDBC backs the row-by-row database access (the borme_log adapter today; the
+    // resolution-function calls and daily upserts next). Repositories are compiled ahead-of-time by
+    // micronaut-data-processor — no reflection/runtime proxies. Flyway still owns the schema
+    // (schema-generate is off); the bulk historical-import path stays raw SQL/COPY (ADR-0006).
+    implementation("io.micronaut.data:micronaut-data-jdbc")
+    annotationProcessor("io.micronaut.data:micronaut-data-processor")
     runtimeOnly(libs.logback.classic)
     runtimeOnly(libs.postgresql)
     runtimeOnly(libs.flyway.core)
@@ -58,6 +70,9 @@ dependencies {
     testImplementation(libs.mockito.core)
     // assertj-db is the standard for database-backed checks (persistence/borme_log tests).
     testImplementation(libs.assertj.db)
+    // ArchUnit enforces the hexagonal layer boundaries (domain / infrastructure / application)
+    // as a plain JUnit test — see LayeredArchitectureTest (ADR-0014).
+    testImplementation(libs.archunit)
     // Testcontainers stands up a real Postgres 18 so the JDBC adapters are exercised against the
     // actual ON CONFLICT upsert and CHECK constraints. The canonical schema lives in this module
     // (src/main/resources/db/migration); the tests apply it with Flyway — one source of truth.

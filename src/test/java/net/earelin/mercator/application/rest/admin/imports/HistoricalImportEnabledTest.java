@@ -1,4 +1,4 @@
-package net.earelin.mercator.server.imports;
+package net.earelin.mercator.application.rest.admin.imports;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowableOfType;
