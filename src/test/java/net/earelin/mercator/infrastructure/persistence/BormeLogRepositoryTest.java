@@ -11,6 +11,7 @@ import java.sql.Statement;
 import java.time.LocalDate;
 import java.util.Map;
 import javax.sql.DataSource;
+import net.earelin.mercator.domain.source.BormeLog;
 import net.earelin.mercator.domain.source.BormeLogEntry;
 import net.earelin.mercator.domain.source.BormeLogStatus;
 import net.earelin.mercator.domain.source.ErrorKind;
@@ -26,16 +27,17 @@ import org.postgresql.ds.PGSimpleDataSource;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
- * Exercises {@link MicronautDataBormeLog} (and the {@link BormeLogRepository} Micronaut Data JDBC
- * upsert behind it) against a real Postgres 18. A Testcontainers container is started before the
- * Micronaut context, its coordinates fed to {@code datasources.default} via {@link
- * TestPropertyProvider}; Micronaut's Flyway applies the canonical schema and Micronaut Data wires
- * the repository — so the {@code ON CONFLICT} upsert and the {@code borme_log} CHECK constraints are
- * tested for real (no hand-maintained DDL copy).
+ * Exercises {@link BormeLogRepository} — which is both the Micronaut Data JDBC repository and the
+ * {@link BormeLog} port implementation — against a real Postgres 18. A Testcontainers container is
+ * started before the Micronaut context, its coordinates fed to {@code datasources.default} via
+ * {@link TestPropertyProvider}; Micronaut's Flyway applies the canonical schema and Micronaut Data
+ * wires the repository — so the {@code ON CONFLICT} upsert and the {@code borme_log} CHECK
+ * constraints are tested for real (no hand-maintained DDL copy). Injection is through the domain
+ * port to exercise the contract callers use.
  */
 @MicronautTest(transactional = false)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class MicronautDataBormeLogTest implements TestPropertyProvider {
+class BormeLogRepositoryTest implements TestPropertyProvider {
 
     private static final PostgreSQLContainer<?> POSTGRES =
             new PostgreSQLContainer<>("postgres:18.4");
@@ -57,7 +59,7 @@ class MicronautDataBormeLogTest implements TestPropertyProvider {
     }
 
     @Inject
-    MicronautDataBormeLog bormeLog;
+    BormeLog bormeLog;
 
     private AssertDbConnection assertDb;
 

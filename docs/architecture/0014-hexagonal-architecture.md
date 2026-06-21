@@ -12,7 +12,12 @@ in-place amendment — see the **Domain core** bullet under Decision.)* *(Update
 **driven adapters** (`…infrastructure`) may now use infrastructure-facing Micronaut tooling —
 `io.micronaut.*` is forbidden **only** in the domain core, not the whole non-application surface;
 the layer boundaries are now enforced by an ArchUnit test. Maintainer-approved in-place
-amendment.)*
+amendment.)* *(Updated 2026-06 — **simplification**: the domain core is **no longer required to be
+framework-free**. A domain data object may carry persistence (`@MappedEntity`) and serialization
+(`@Serdeable`) annotations and serve directly as the DB entity / API body; a separate persistence
+row or DTO is added only where the shape genuinely differs. Only the **inward-only dependency
+direction** is still enforced by ArchUnit. Maintainer-approved in-place amendment — see the
+**Domain core** bullet.)*
 
 ## Context
 
@@ -42,23 +47,20 @@ Adopt **hexagonal architecture (ports and adapters)** across the Java modules, a
 The aim is that anyone reading the code can tell business logic from I/O at a glance.
 
 - **Domain core** (in the `net.earelin.mercator.domain` packages) — the model and the
-  use-case/application services (parsing, normalisation, the ingestion service). It depends on
-  **nothing** outward: no Micronaut, no JDBC, no HTTP client. Dependencies point **inward only**.
-  The boundary is now enforced by **package** within the single module rather than by a separate
-  Gradle library. **DI annotations — the standard only.** The core *may* carry the vendor-neutral
-  `jakarta.inject` (JSR-330) annotations (`@Singleton`, `@Inject`, `@Named`, `@Qualifier`) plus the
-  `jakarta.annotation` lifecycle markers, so application services are auto-discovered as beans
-  instead of each needing a hand-written `@Factory`. These are pure wiring metadata readable by any
-  compliant container; constructors stay public and usable from a plain `new` in unit tests, so the
-  core is **not** coupled to Micronaut. Every **Micronaut-specific** type stays forbidden in the
-  core — `io.micronaut.*`, including `@Factory`, `@Bean`, `@Value`, `@Property`,
-  `@ConfigurationProperties`, `@Scheduled`, `@Controller` and all HTTP/JDBC/serde types; the core
-  depends on `jakarta.inject:jakarta.inject-api` directly so it compiles against the standard, not
-  transitively via Micronaut. This is enforced by an **ArchUnit** test (`LayeredArchitectureTest`,
-  run in `./gradlew check`): the `…domain` packages may not depend on `io.micronaut..`, JDBC
-  (`java.sql`/`javax.sql`), HTTP (`java.net.http`) or the parser libraries (jsoup/PDFBox) —
-  Micronaut's synthetic `$…$Definition` beans (annotated `@Generated`) are excluded, since those
-  are generated, not hand-written core code.
+  use-case/application services (parsing, normalisation, the ingestion service). It depends on no
+  *outer layer* — it must not import `…infrastructure` or `…application`; dependencies point
+  **inward only**. It is **not** required to be framework-free: a domain **data object may carry
+  persistence and serialization annotations** (`@MappedEntity`, `@Id`, `@MappedProperty`,
+  `@Serdeable`) and be used directly as the Micronaut Data entity and/or the API body — for a small
+  domain, one annotated record beats a parallel persistence row + DTO + the mapping between them. A
+  separate persistence row or API DTO is introduced **only where the shape genuinely differs** (a
+  computed/hypermedia field, or edge string-parsing at the controller). Application services carry
+  `jakarta.inject` `@Singleton`/`@Inject` so they are auto-discovered as beans without a
+  hand-written `@Factory`; constructors stay public and usable from a plain `new` in unit tests.
+  Where an enum is stored as a custom value, an `AttributeConverter` (a `@Singleton` living in the
+  core, beside the enum) keeps the column mapping correct. **Only the inward-only dependency
+  direction is enforced** by the **ArchUnit** `LayeredArchitectureTest` (in `./gradlew check`); the
+  core is no longer asserted to be free of `io.micronaut`/JDBC types.
 - **Ports** — interfaces *owned by the core* expressing what it needs and offers:
   - *Driven (outbound) ports* — e.g. a `BormeGateway` (enumerate summary + fetch a document,
     encapsulating the XML→txt→PDF fallback), and a persistence/resolution port that exposes
@@ -118,8 +120,10 @@ or the core easier to test?* If none of those, leave it out.
   core+ports (`…domain`) + driven-adapters (`…infrastructure`) vs. driving-adapters+wiring
   (`…application`), and the two write paths become two driving usages over the same ingestion use
   case — the `@Scheduled` daily bean and the import controller's async runner.
-- **Cost:** more interfaces and mapping (domain objects ↔ DTOs ↔ persistence rows) than a
-  layered design — accepted as the price of isolation, and bounded by the pragmatic-scope rule.
+- **Mapping kept minimal:** because a domain object may itself be the `@MappedEntity` / API body,
+  there is normally **no** domain↔DTO↔persistence-row triplication — a DTO or persistence row is
+  added only where the shape genuinely differs. This trades a little theoretical isolation
+  (framework annotations sit on domain types) for materially less code in a small domain.
 
 ## Alternatives considered
 

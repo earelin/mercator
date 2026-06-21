@@ -1,6 +1,5 @@
 package net.earelin.mercator.architecture;
 
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
@@ -9,19 +8,12 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.Test;
 
 /**
- * Enforces the hexagonal layer boundaries (ADR-0014) so they cannot erode silently:
+ * Enforces the inward-only dependency direction between the layers (ADR-0014) so it cannot erode
+ * silently: <strong>application → infrastructure → domain</strong>. Domain objects may carry
+ * persistence/serialization annotations (e.g. {@code @MappedEntity}, {@code @Serdeable}) and serve
+ * as DB entities / API bodies — only the dependency direction is policed, not framework-freedom.
  *
- * <ul>
- *   <li><strong>domain</strong> — the framework-free core; depends on nothing outward (no
- *       Micronaut, JDBC, HTTP or parser libraries), only the vendor-neutral {@code jakarta.inject}
- *       standard;
- *   <li><strong>infrastructure</strong> — driven adapters; may depend on the domain and on
- *       infrastructure-facing Micronaut tooling, but never on the application layer;
- *   <li><strong>application</strong> — Micronaut driving adapters + wiring; the top layer,
- *       depended on by no one.
- * </ul>
- *
- * <p>Production classes are imported once (tests excluded) and reused across the rules.
+ * <p>Production classes are imported once (tests excluded).
  */
 class LayeredArchitectureTest {
 
@@ -46,29 +38,6 @@ class LayeredArchitectureTest {
                 .whereLayer("Domain").mayOnlyBeAccessedByLayers("Application", "Infrastructure")
                 .because("dependencies point inward only: application → infrastructure → domain "
                         + "(ADR-0014)")
-                .check(PRODUCTION_CLASSES);
-    }
-
-    @Test
-    void domain_core_is_free_of_frameworks_and_io() {
-        noClasses()
-                .that().resideInAPackage(ROOT + ".domain..")
-                // Exclude the synthetic bean-definition classes Micronaut's annotation processor
-                // emits next to a @Singleton domain service ($…$Definition); those legitimately
-                // reference io.micronaut, but the hand-written core does not (ADR-0014).
-                .and().areNotAnnotatedWith("io.micronaut.core.annotation.Generated")
-                .should().dependOnClassesThat().resideInAnyPackage(
-                        "io.micronaut..",
-                        "java.sql..",
-                        "javax.sql..",
-                        "java.net.http..",
-                        "org.jsoup..",
-                        "org.apache.pdfbox..",
-                        "org.postgresql..",
-                        "com.zaxxer..")
-                .because("the domain core depends on nothing outward — no Micronaut, JDBC, HTTP "
-                        + "or parser libraries; only the vendor-neutral jakarta.inject standard "
-                        + "is allowed (ADR-0014)")
                 .check(PRODUCTION_CLASSES);
     }
 }

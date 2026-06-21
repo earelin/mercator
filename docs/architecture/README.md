@@ -22,6 +22,14 @@ Proposed**; only the maintainer marks one **Accepted**, and **Accepted ADRs are 
 > (`io.micronaut.*` is forbidden only in the domain core). The layer boundaries are now enforced by
 > an ArchUnit test (`LayeredArchitectureTest`). Maintainer-approved in-place amendments, noted in
 > ADR-0014's `## Status` line.
+>
+> **Note (2026-06).** A further **simplification** amended ADR-0014/0005 in place: the domain core
+> is no longer required to be framework-free — domain data objects may carry `@MappedEntity` /
+> `@Serdeable` and serve directly as DB entities / API bodies (a parallel persistence row or DTO is
+> added only where the shape differs), and ArchUnit now enforces **only the inward-only dependency
+> direction**. Blocking request handling runs on **Java virtual threads**
+> (`@ExecuteOn(TaskExecutors.BLOCKING)` on Java 25). Maintainer-approved in-place amendments, noted
+> in the respective `## Status` lines.
 
 ## Index
 

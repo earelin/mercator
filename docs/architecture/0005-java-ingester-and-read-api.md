@@ -10,7 +10,10 @@ into a **single Micronaut module**; the offline backfill CLI is removed and the 
 import now runs in-server behind a gated admin endpoint. A maintainer-approved redesign for
 simplicity; superseding-ADR immutability is relaxed for this amendment — see Context.)* *(Updated
 2026-06: row-by-row database access uses **Micronaut Data JDBC** — see the persistence paragraph
-under Decision. Maintainer-approved in-place amendment.)*
+under Decision. Maintainer-approved in-place amendment.)* *(Updated 2026-06: persistence entities
+are the **domain objects themselves** (`@MappedEntity` on the domain record, no parallel row), and
+blocking request handling runs on **Java virtual threads** via `@ExecuteOn(TaskExecutors.BLOCKING)`.
+Maintainer-approved in-place amendment.)*
 
 ## Context
 
@@ -56,11 +59,19 @@ Row-by-row database access (the daily incremental, the `borme_log` idempotency r
 calls into the `resolve_*` functions of [ADR-0007](0007-single-source-of-truth-entity-resolution.md))
 goes through **Micronaut Data JDBC** — compile-time `@JdbcRepository` interfaces with no reflection
 or runtime proxies, fitting the low-memory/fast-startup goal — living in the `…infrastructure`
-adapters behind the core-owned ports. Conflict/upsert and function-call semantics use explicit
-`@Query` SQL. Flyway remains the single owner of the schema ([ADR-0016](0016-database-schema-migrations.md))
-(repository schema generation is off); the **bulk** historical import keeps its raw staging-table
-`COPY` + SQL merge ([ADR-0006](0006-hybrid-write-path.md)) rather than per-row repository writes.
-No JPA/Hibernate.
+adapters. The **mapped entity is the domain object itself** (e.g. `BormeLogEntry` carries
+`@MappedEntity`), not a parallel persistence row; a repository may also implement a core port
+directly. Conflict/upsert and function-call semantics use explicit `@Query` SQL, and an
+`AttributeConverter` covers any enum stored as a custom value. Flyway remains the single owner of
+the schema ([ADR-0016](0016-database-schema-migrations.md)) (repository schema generation is off);
+the **bulk** historical import keeps its raw staging-table `COPY` + SQL merge
+([ADR-0006](0006-hybrid-write-path.md)) rather than per-row repository writes. No JPA/Hibernate.
+
+Blocking request handling runs on **Java virtual threads**: controllers (and future scheduled /
+async jobs) that do blocking I/O are annotated `@ExecuteOn(TaskExecutors.BLOCKING)`, which on Java
+25 is a virtual-thread-per-task executor automatically. This keeps high request concurrency cheap
+on the single VPS ([ADR-0011](0011-cheap-eu-vps-hosting.md)) without adopting a reactive
+programming model — consistent with the "keep it simple" mandate.
 
 ## Consequences
 

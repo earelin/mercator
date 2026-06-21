@@ -52,8 +52,11 @@ producing one Java 25 + Micronaut server artifact. Sources live at the repo root
 with layers separated by **package** (not by Gradle module):
 
 - `docs/` — specs, features, architecture (design source of truth; see below).
-- `net.earelin.mercator.domain.*` — the framework-free domain/application core: model, ports,
-  and the ingestion/normalisation/parsing logic. Depends on nothing outward.
+- `net.earelin.mercator.domain.*` — the domain/application core: model, ports, and the
+  ingestion/normalisation/parsing logic. Depends on no *other layer* (no infrastructure/application
+  imports), but a domain data object **may** carry persistence (`@MappedEntity`) and serialization
+  (`@Serdeable`) annotations and serve directly as the DB entity / API body — a separate DTO is
+  introduced only where the shape genuinely differs (see the simplification note in ADR-0014).
 - `net.earelin.mercator.infrastructure.*` — driven adapters (BOE HTTP client, document cache,
   extractors, JDBC persistence). May use **infrastructure-facing Micronaut tooling** where it
   earns its keep (e.g. config binding, the declarative HTTP client, caching/retry) — but never
@@ -80,14 +83,20 @@ conventions, and the ADR lifecycle/approval rules.
 - **PostgreSQL 18** is the single datastore (`pg_trgm`, `fuzzystrmatch`, `unaccent`). No
   second datastore initially. See ADR-0004.
 - **Micronaut Data JDBC** (compile-time repositories, HikariCP pool) is the row-by-row
-  database-access layer in `infrastructure.persistence` — `@JdbcRepository` interfaces over
-  `@MappedEntity` rows, with custom `@Query` SQL where conflict/upsert or resolution-function
-  semantics need it. Flyway owns the schema (`schema-generate` off, ADR-0016); the bulk
-  historical-import path stays raw SQL/COPY (ADR-0006). No JPA/Hibernate.
+  database-access layer — `@JdbcRepository` interfaces in `infrastructure.persistence` over
+  `@MappedEntity` **domain objects** (the entity is the domain record, not a parallel row class),
+  with custom `@Query` SQL where conflict/upsert or resolution-function semantics need it, and an
+  `AttributeConverter` for any enum stored as a custom value. Flyway owns the schema
+  (`schema-generate` off, ADR-0016); the bulk historical-import path stays raw SQL/COPY (ADR-0006).
+  No JPA/Hibernate.
 - **Java 25 + Micronaut** single module — the **read-only** API, the daily-incremental job
   (Micronaut `@Scheduled`), **and** the historical/massive import behind a gated admin endpoint;
   regex over the per-document XML + ported bormeparser dictionaries, no Python. Micronaut chosen
   over Spring Boot for low memory/fast startup on a cheap VPS. See ADR-0005.
+- **Java virtual threads** back the blocking work: controllers (and future scheduled/async jobs)
+  doing blocking I/O run on the Micronaut `blocking` executor via `@ExecuteOn(TaskExecutors.BLOCKING)`,
+  which on Java 25 is a virtual-thread-per-task executor automatically. Keeps high concurrency cheap
+  on one small VPS (ADR-0011) without reactive complexity.
 - **Shared ingestion logic** — BOE client, parser, normalisation and the ingestion service live
   in the `domain`/`infrastructure` packages so resolution/idempotency are defined once and used
   by both write paths. See ADR-0005/0007.
@@ -141,23 +150,22 @@ These are the load-bearing decisions; preserve them unless a new ADR supersedes 
   exemption) and additionally gated by `mercator.imports.historical.enabled` (default off —
   absent/404 when disabled). All config is 12-factor (env vars + Micronaut environments, one
   artifact); secrets are injected at run time, never committed or baked into images. (ADR-0013)
-- **Hexagonal architecture (ports and adapters), applied pragmatically.** The goal is **clear
-  layer isolation (readability + debuggability) and testability**, not architectural purity.
-  The domain/application core (the `…domain` packages) depends on nothing outward — no JDBC, no
-  HTTP, and no Micronaut-specific (`io.micronaut.*`) types; dependencies point **inward only**. It
-  *may* carry the vendor-neutral `jakarta.inject` (JSR-330) DI annotations
-  (`@Singleton`/`@Inject`/`@Named`) so core services are auto-discovered as beans without
-  `@Factory` boilerplate — pure wiring metadata that doesn't couple the core to the framework.
-  I/O lives in adapters behind core-owned
+- **Layered architecture, applied for simplicity.** The goal is **clear layer isolation
+  (readability + debuggability) and testability**, not architectural purity. Three packages with
+  **inward-only** dependencies: `…application` (Micronaut driving adapters + wiring) →
+  `…infrastructure` (driven adapters) → `…domain` (model + application services). The domain core
+  does not import the outer layers, and `jakarta.inject` (`@Singleton`/`@Inject`) lets its services
+  be beans without `@Factory` boilerplate. **Domain data objects may double as DB entities and API
+  bodies** — a domain record can carry `@MappedEntity`/`@Serdeable` and be persisted/serialized
+  directly; a separate persistence row or API DTO is added **only where the shape genuinely
+  differs** (a computed/hypermedia field, edge string-parsing). I/O still lives behind core-owned
   ports (BORME source, persistence/resolution, link queries are driven ports; the API, the
-  scheduled daily job, and the import controller + async runner are driving adapters). The
-  DB-side resolution (ADR-0007) is the
-  *implementation* of a core-owned resolution port, not an exception to the rule. Define a port
-  only where a real layer boundary is crossed — don't manufacture ports for trivial internals;
-  if an abstraction doesn't make the layers clearer, the system easier to debug, or the core
-  easier to test, leave it out. The `domain`/`infrastructure`/`application` boundaries (inward-only
-  dependencies; the core free of Micronaut/JDBC/HTTP) are enforced by an **ArchUnit** test
-  (`LayeredArchitectureTest`) that runs in `./gradlew check`. (ADR-0014)
+  scheduled daily job, and the import controller + async runner are driving adapters) — these aid
+  the stub-based testing convention. The DB-side resolution (ADR-0007) is the *implementation* of a
+  core-owned resolution port. Define a port only where a real layer boundary is crossed — don't
+  manufacture ports for trivial internals. **Only the inward-only dependency direction** is enforced
+  by an **ArchUnit** test (`LayeredArchitectureTest`, in `./gradlew check`); the core is no longer
+  required to be framework-free. (ADR-0014)
 
 ## Licensing constraint when porting prior art
 

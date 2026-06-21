@@ -1,11 +1,22 @@
 package net.earelin.mercator.domain.source;
 
+import io.micronaut.core.annotation.Nullable;
+import io.micronaut.data.annotation.Id;
+import io.micronaut.data.annotation.MappedEntity;
+import io.micronaut.data.annotation.MappedProperty;
 import java.time.LocalDate;
 import java.util.Objects;
 
 /**
- * One row to record in {@code borme_log} (migration V1.7.0). {@code errorKind}/{@code errorDetail}
- * are set only when {@code status == }{@link BormeLogStatus#ERROR}.
+ * One {@code borme_log} row (baseline schema). The domain record doubles as the Micronaut Data
+ * entity (the project favours simplicity over a separate persistence row): property names map to
+ * the snake_case columns, {@code status}/{@code errorKind} persist as their enum {@code name()}
+ * (matching the column CHECK constraints), and {@code sourcePath} persists via
+ * {@link SourcePathAttributeConverter} as its lowercase {@code dbValue()}. The DB-managed
+ * {@code processed_at} column is not mapped here (the upsert sets it with {@code NOW()}).
+ *
+ * <p>{@code errorKind}/{@code errorDetail} are set only when {@code status == }{@link
+ * BormeLogStatus#ERROR}.
  *
  * @param bormeId     opaque document id (primary key)
  * @param pubDate     publication date of the document's day
@@ -14,13 +25,14 @@ import java.util.Objects;
  * @param sourcePath  the write path that produced this row
  * @param errorDetail human-readable detail (only for ERROR), else {@code null}
  */
+@MappedEntity("borme_log")
 public record BormeLogEntry(
-        String bormeId,
+        @Id String bormeId,
         LocalDate pubDate,
         BormeLogStatus status,
-        ErrorKind errorKind,
-        SourcePath sourcePath,
-        String errorDetail) {
+        @Nullable ErrorKind errorKind,
+        @MappedProperty(converter = SourcePathAttributeConverter.class) SourcePath sourcePath,
+        @Nullable String errorDetail) {
 
     public BormeLogEntry {
         Objects.requireNonNull(bormeId, "bormeId");
