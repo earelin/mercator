@@ -1,0 +1,38 @@
+# Spectral ruleset for the OpenAPI contract (docs/specs/api.openapi.yaml).
+#
+#   spectral:oas                      -> structural OpenAPI validation + style.
+#   @stoplight/spectral-owasp-ruleset -> OWASP API Security Top-10 checks.
+#
+# Run via:  npx --package=@stoplight/spectral-cli \
+#               --package=@stoplight/spectral-owasp-ruleset \
+#               spectral lint docs/specs/api.openapi.yaml
+extends:
+  - spectral:oas
+  - "@stoplight/spectral-owasp-ruleset"
+
+rules:
+  # CORS is enforced by the reverse proxy / Micronaut CORS configuration in front of
+  # the single VPS, not declared per-response in the contract. Turn off the rule that
+  # demands an Access-Control-Allow-Origin header on every response.
+  owasp:api8:2023-define-cors-origin: 'off'
+
+  # Most string fields carry free-prose BORME text (company/person names, raw act
+  # blocks, addresses) where a regex pattern or enum is inappropriate. Their length is
+  # already bounded by maxLength, so the unbounded-string risk this rule guards is
+  # covered; turn off the "must add format/pattern/enum" advisory.
+  owasp:api4:2023-string-restricted: 'off'
+
+overrides:
+  # The liveness/readiness probes are intentionally unauthenticated and minimal
+  # (up/down only, no data) — Spec 6 / ADR-0013. Exempt them from the auth, rate-limit
+  # and error-response rules that apply to the data endpoints.
+  - files:
+      - "**/api.openapi.yaml#/paths/~1health~1liveness/get"
+      - "**/api.openapi.yaml#/paths/~1health~1readiness/get"
+    rules:
+      owasp:api2:2023-read-restricted: 'off'
+      owasp:api4:2023-rate-limit: 'off'
+      owasp:api4:2023-rate-limit-responses-429: 'off'
+      owasp:api8:2023-define-error-responses-401: 'off'
+      owasp:api8:2023-define-error-responses-500: 'off'
+      owasp:api8:2023-define-error-validation: 'off'
