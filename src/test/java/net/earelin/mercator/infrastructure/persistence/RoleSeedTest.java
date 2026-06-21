@@ -28,6 +28,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 class RoleSeedTest {
 
+    private static final String COMPANY_ID = "00000000-0000-0000-0000-000000000001";
+    private static final String PERSON_ID = "00000000-0000-0000-0000-000000000002";
+
     @Container
     private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:18.4");
 
@@ -84,25 +87,30 @@ class RoleSeedTest {
 
     /**
      * Inserts a minimal company / person / borme_act graph and then an appointment with the given
-     * role, so only the {@code fk_appointment_role} constraint is under test.
+     * role, so only the {@code fk_appointment_role} constraint is under test. company and person
+     * carry explicit UUID ids (the live keys are UUIDv7); borme_act keeps its BIGSERIAL id.
      */
     private static void insertAppointmentWithRole(String role) throws SQLException {
         try (Connection connection = dataSource.getConnection();
                 Statement statement = connection.createStatement()) {
             statement.execute(
                     "INSERT INTO company (id, raw_name, norm_name, province_code, first_seen, last_seen) "
-                            + "VALUES (1, 'Acme SL', 'ACME', '36', DATE '2024-01-01', DATE '2024-01-01') "
+                            + "VALUES ('" + COMPANY_ID + "', 'Acme SL', 'ACME', '36', "
+                            + "DATE '2024-01-01', DATE '2024-01-01') "
                             + "ON CONFLICT DO NOTHING");
             statement.execute(
-                    "INSERT INTO person (id, raw_name, norm_name) VALUES (1, 'Jane Doe', 'JANE DOE') "
+                    "INSERT INTO person (id, raw_name, norm_name) "
+                            + "VALUES ('" + PERSON_ID + "', 'Jane Doe', 'JANE DOE') "
                             + "ON CONFLICT DO NOTHING");
             statement.execute(
                     "INSERT INTO borme_act (id, borme_id, pub_date, province_code, company_id, act_type, doc_seq, raw_block) "
-                            + "VALUES (1, 'BORME-A-2024-1-36', DATE '2024-01-01', '36', 1, 'NOMBRAMIENTOS', 0, 'raw') "
+                            + "VALUES (1, 'BORME-A-2024-1-36', DATE '2024-01-01', '36', '" + COMPANY_ID + "', "
+                            + "'NOMBRAMIENTOS', 0, 'raw') "
                             + "ON CONFLICT DO NOTHING");
             statement.execute(
                     "INSERT INTO appointment (company_id, person_id, role, event_type, act_id, valid_from) "
-                            + "VALUES (1, 1, '" + role + "', 'NOMBRAMIENTO', 1, DATE '2024-01-01')");
+                            + "VALUES ('" + COMPANY_ID + "', '" + PERSON_ID + "', '" + role + "', "
+                            + "'NOMBRAMIENTO', 1, DATE '2024-01-01')");
         }
     }
 }
