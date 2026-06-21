@@ -82,11 +82,13 @@ The aim is that anyone reading the code can tell business logic from I/O at a gl
 - **Wiring** — Micronaut dependency injection composes ports to adapters. A `@Factory` method in
   the `…application` packages is the right tool when construction is non-trivial (a bean built from
   configuration, a choice between implementations, an object that must not know it is a bean); a
-  framework-free core service that simply needs its ports injected instead carries a
-  `jakarta.inject` `@Singleton` and is auto-discovered (see the **Domain core** bullet).
-  Micronaut-specific types (`io.micronaut.*`) are confined to the **outer layers** — the driving
-  adapters + wiring (`…application`) and, where it earns its keep, the driven adapters
-  (`…infrastructure`); they are **never** allowed in the domain core.
+  core service that simply needs its ports injected instead carries a `jakarta.inject` `@Singleton`
+  and is auto-discovered (see the **Domain core** bullet). Micronaut *wiring and runtime* types —
+  controllers, `@Factory`, config binding, the scheduler — stay in the **outer layers** (the
+  driving adapters + wiring in `…application`, and the driven adapters in `…infrastructure`); the
+  domain core takes none of those. The only `io.micronaut.*` the core may reference are the
+  **mapping/serialization annotations** on its data objects (`@MappedEntity`, `@Serdeable` — see the
+  **Domain core** bullet).
 
 **Reconciliation with DB-side resolution ([ADR-0007](0007-single-source-of-truth-entity-resolution.md)).**
 Entity resolution intentionally lives in PL/pgSQL, which sits in tension with "all domain

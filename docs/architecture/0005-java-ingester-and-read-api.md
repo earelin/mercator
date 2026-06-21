@@ -48,9 +48,9 @@ version pinned via the wrapper). The one artifact hosts:
   (by date or by month), which runs the import asynchronously in the background.
 
 Internal layering is by **package**, not by Gradle module
-([ADR-0014](0014-hexagonal-architecture.md)): the framework-free domain/application core and
-its driven adapters live in `net.earelin.mercator.domain` / `…infrastructure`; the Micronaut
-driving adapters (controllers, the `@Scheduled` bean, wiring) live in `…application`. Both write
+([ADR-0014](0014-hexagonal-architecture.md)): the domain/application core and its driven adapters
+live in `net.earelin.mercator.domain` / `…infrastructure`; the Micronaut driving adapters
+(controllers, the `@Scheduled` bean, wiring) live in `…application`. Both write
 paths call the **same** ingestion logic and entity resolution
 ([ADR-0007](0007-single-source-of-truth-entity-resolution.md)), so the daily and backfill paths
 behave identically. The parser **does not resolve identity**.
