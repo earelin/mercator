@@ -28,11 +28,6 @@
     <module name="RightCurly"/>
     <module name="VisibilityModifier">
       <property name="allowPublicFinalFields" value="true"/>
-      <!-- DI-injected fields are necessarily non-private (the container sets them); a
-           @MicronautTest using TestPropertyProvider cannot use constructor injection, so allow
-           jakarta @Inject fields. Both canonical and simple names, per the check's matching. -->
-      <property name="ignoreAnnotationCanonicalNames"
-                value="com.google.common.annotations.VisibleForTesting, org.junit.Rule, org.junit.ClassRule, org.junit.jupiter.api.io.TempDir, jakarta.inject.Inject, Inject"/>
     </module>
     <module name="FinalClass"/>
     <module name="HideUtilityClassConstructor"/>

@@ -5,4 +5,7 @@
 <suppressions>
   <!-- Test methods use snake_case; suppress camelCase-only MethodName check in test sources. -->
   <suppress checks="MethodName" files=".*Test.*\.java|.*IT\.java|.*Steps\.java|.*TestFixtures.*\.java"/>
+  <!-- @MicronautTest + TestPropertyProvider needs field injection, which requires non-private
+       fields; allow it in test sources only (production code keeps the check). -->
+  <suppress checks="VisibilityModifier" files=".*Test\.java"/>
 </suppressions>
