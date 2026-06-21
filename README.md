@@ -25,7 +25,9 @@ Start with [`docs/specs/`](docs/specs/README.md) for *what* the system does,
 ## Development
 
 `script/ci.sh` is the local CI pipeline. It checks every Markdown file for formatting,
-links (relative paths, heading anchors and external URLs) and Mermaid diagram syntax:
+links (relative paths, heading anchors and external URLs) and Mermaid diagram syntax;
+builds and tests the code; lints the SQL; and statically validates the OpenAPI contract
+(Spectral — structure + OWASP security):
 
 ```sh
 ./script/ci.sh                    # full run (includes external link checks)
@@ -38,7 +40,20 @@ It runs automatically before every push as a git pre-push hook. Enable it once p
 git config core.hooksPath .githooks
 ```
 
+The heavyweight dynamic API check — driving a **running** server against the OpenAPI contract
+for drift and security (Schemathesis) — is kept out of `ci.sh` and lives in its own script:
+
+```sh
+./script/api-conformance.sh       # needs the app running (./gradlew run)
+```
+
+It is configured via `MERCATOR_BASE_URL` (default `http://localhost:8080`), `MERCATOR_API_KEY`
+(sent as `X-API-Key`) and `SCHEMATHESIS_MAX_EXAMPLES`.
+
 Required tools: [`markdownlint-cli2`](https://github.com/DavidAnson/markdownlint-cli2),
 [`lychee`](https://github.com/lycheeverse/lychee) and
 [`@mermaid-js/mermaid-cli`](https://github.com/mermaid-js/mermaid-cli) (`mmdc`) — the last
 needs a local Chrome/Chromium (auto-detected, or set `PUPPETEER_EXECUTABLE_PATH`).
+The OpenAPI checks additionally use [`spectral`](https://github.com/stoplightio/spectral) (run
+on demand via `npx`, in `ci.sh`) and, for the separate dynamic conformance script,
+[`schemathesis`](https://github.com/schemathesis/schemathesis) (`pipx install schemathesis`).

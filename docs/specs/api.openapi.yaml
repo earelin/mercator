@@ -1,0 +1,1237 @@
+openapi: 3.1.0
+
+info:
+  title: Mercator Read API
+  version: 1.0.0
+  summary: Read-only HTTP API over the BORME-derived company/person graph.
+  description: |
+    The public, **read-only** HTTP surface of Mercator (Spec 6 — Public API).
+
+    Mercator turns Spain's official mercantile gazette (the BORME) into a queryable
+    database and graph of companies, the people associated with them, and the links
+    between them. This API exposes company search/detail, person detail, and the
+    relationship (link) queries.
+
+    Contract notes (these are invariants of the system, not optional behaviour):
+
+    - **Read-only.** No endpoint mutates data. Ingestion happens off the HTTP surface
+      (the offline `ingester` backfill and the server's scheduled daily job).
+    - **Versioned** under `/api/v1`; a breaking change ships a new version prefix.
+    - **Authentication.** In production every request must carry a valid API key in the
+      `X-API-Key` header; missing/invalid keys get `401`. The `/health/*` probes are the
+      only unauthenticated paths. Authentication is environment-toggled (disabled only in
+      local/dev), enabled by default and fail-closed (ADR-0013).
+    - **Probabilistic identity.** Persons have no stable identifier, so person-derived
+      associations and links carry a confidence score and are never presented as facts
+      (ADR-0009). Link results report **identity confidence** and **temporal relevance**
+      as two separate fields — never one blended score (Spec 5 § Confidence).
+    - **Data protection.** Suppressed personal data is filtered out entirely (treated as
+      not-present, not a redacted stub) and residual DNI/NIE never surface (Spec 7).
+    - **Pagination.** Collection responses are paginated with a default and a hard maximum
+      page size; any truncation is signalled explicitly, never silent.
+  license:
+    name: GPL-3.0-or-later
+    url: https://www.gnu.org/licenses/gpl-3.0.html
+  contact:
+    name: Mercator
+    url: https://github.com/earelin/mercator
+
+servers:
+  - url: /api/v1
+    description: |
+      Production API root, served behind the reverse proxy on the VPS. Versioned — a
+      breaking change ships a new prefix (e.g. /api/v2).
+    x-internal: false
+
+tags:
+  - name: Companies
+    description: Company search and detail.
+  - name: Persons
+    description: Person detail with probabilistic identity confidence.
+  - name: Links
+    description: Relationship queries — shared administrators, shared address, multi-hop.
+  - name: Health
+    description: Liveness/readiness probes (unauthenticated; up/down only).
+  - name: Admin
+    description: |
+      Gated admin operations — the historical/massive import. Off the public read
+      namespace, always API-key-required, and absent (404) unless the import gate is
+      enabled (ADR-0006/0013).
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /companies:
+    get:
+      operationId: searchCompanies
+      tags: [Companies]
+      summary: Search companies
+      description: |
+        Ranked company matches using `pg_trgm` trigram similarity over the normalised
+        name. Suppressed companies are not returned.
+      parameters:
+        - $ref: '#/components/parameters/SearchQuery'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Ranked, paginated company matches.
+          headers:
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompanySearchPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /companies/{id}:
+    get:
+      operationId: getCompany
+      tags: [Companies]
+      summary: Get company detail
+      description: |
+        A company with its acts, the appointments and registered address currently in force,
+        and — separately — the closed (past) appointment and address intervals, each carrying
+        a reference to the BORME act that recorded it. Suppressed rows are filtered out of the
+        nested collections.
+      parameters:
+        - $ref: '#/components/parameters/EntityId'
+      responses:
+        '200':
+          description: The company and its assembled history.
+          headers:
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompanyDetail' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /companies/{id}/shared-administrators:
+    get:
+      operationId: getSharedAdministrators
+      tags: [Links]
+      summary: Companies sharing an administrator
+      description: |
+        Companies linked to this one because the same resolved person holds — or ever
+        held — an administrative role in both. Spans the full appointment history by
+        default; set `overlap=true` to require the roles were held at the same time (the
+        overlapping period is then returned). Each link carries the person's identity
+        confidence and a temporal flag as two separate fields.
+      parameters:
+        - $ref: '#/components/parameters/EntityId'
+        - $ref: '#/components/parameters/Overlap'
+        - $ref: '#/components/parameters/OnDate'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Paginated shared-administrator links.
+          headers:
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SharedAdministratorPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /companies/{id}/shared-addresses:
+    get:
+      operationId: getSharedAddresses
+      tags: [Links]
+      summary: Companies sharing a registered address
+      description: |
+        Companies linked to this one because they share the same normalised registered
+        address (a deterministic join, identity confidence `1.0`). Spans the full address
+        history by default; set `overlap=true` to require co-location at the same time.
+      parameters:
+        - $ref: '#/components/parameters/EntityId'
+        - $ref: '#/components/parameters/Overlap'
+        - $ref: '#/components/parameters/OnDate'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Paginated shared-address links.
+          headers:
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SharedAddressPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /companies/{id}/connections:
+    get:
+      operationId: getConnections
+      tags: [Links]
+      summary: Multi-hop connections through people
+      description: |
+        Bounded traversal of the company⇄person graph: companies connected to this one
+        within `hops` hops through shared individuals. Traversal carries a path and
+        detects cycles. A path's identity confidence is the product of its per-hop
+        confidences. Results are bounded (hop cap + result cap); any truncation is
+        signalled by `truncated`.
+      parameters:
+        - $ref: '#/components/parameters/EntityId'
+        - $ref: '#/components/parameters/Hops'
+        - $ref: '#/components/parameters/OnDate'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Paginated connection paths.
+          headers:
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConnectionPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /persons/{id}:
+    get:
+      operationId: getPerson
+      tags: [Persons]
+      summary: Get person detail
+      description: |
+        A person with the companies they are/were associated with and in what roles. Each
+        association carries a confidence score because person identity is probabilistic
+        (ADR-0009) — never presented as an established fact. Suppressed persons are not
+        returned.
+      parameters:
+        - $ref: '#/components/parameters/EntityId'
+      responses:
+        '200':
+          description: The person and their company associations.
+          headers:
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PersonDetail' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /health/liveness:
+    get:
+      operationId: liveness
+      tags: [Health]
+      summary: Liveness probe
+      description: Unauthenticated. Reports only up/down — no data or internal state.
+      security: []
+      responses:
+        '200':
+          description: The service is up.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+        '503':
+          description: The service is down.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+
+  /health/readiness:
+    get:
+      operationId: readiness
+      tags: [Health]
+      summary: Readiness probe
+      description: Unauthenticated. Reports only up/down — no DB internals, counts or schema state.
+      security: []
+      responses:
+        '200':
+          description: The service is ready to serve traffic.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+        '503':
+          description: The service is not ready.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+
+  /admin/imports:
+    servers:
+      - url: /
+        description: |
+          Admin endpoints are served at the server root, off the public `/api/v1` read
+          namespace (ADR-0006/0013). Gated by `mercator.imports.historical.enabled`:
+          when the gate is off the routes are absent (404), not merely forbidden.
+    post:
+      operationId: importAll
+      tags: [Admin]
+      summary: Trigger a full historical import (2009→present)
+      description: |
+        Queues a massive historical import covering the entire BORME Sección A history from
+        2009-01-02 to the present and returns immediately. The crawl is resumable and
+        idempotent (ADR-0006) and proceeds in incremental (ascending) date order as a sequence
+        of monthly imports; no request body is needed. Poll the returned `statusUrl` for
+        progress (the date and province currently being imported). Always requires the
+        `X-API-Key`, including in local dev where reads are anonymous (ADR-0013).
+      responses:
+        '202':
+          description: Import accepted; the job is queued.
+          headers:
+            Location: { $ref: '#/components/headers/JobLocation' }
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /admin/imports/by-date:
+    servers:
+      - url: /
+        description: |
+          Admin endpoints are served at the server root, off the public `/api/v1` read
+          namespace (ADR-0006/0013). Gated by `mercator.imports.historical.enabled`:
+          when the gate is off the routes are absent (404), not merely forbidden.
+    post:
+      operationId: importByDate
+      tags: [Admin]
+      summary: Trigger a historical import for one publication day
+      description: |
+        Queues a massive historical import covering a single BORME publication day and
+        returns immediately. The import runs asynchronously (staging tables + SQL merge,
+        ADR-0006); poll the returned `statusUrl` for progress (the date and province currently
+        being imported). Always requires the `X-API-Key`, including in local dev where reads
+        are anonymous (ADR-0013).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ImportByDateRequest' }
+      responses:
+        '202':
+          description: Import accepted; the job is queued.
+          headers:
+            Location: { $ref: '#/components/headers/JobLocation' }
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /admin/imports/by-month:
+    servers:
+      - url: /
+        description: |
+          Admin endpoints are served at the server root, off the public `/api/v1` read
+          namespace (ADR-0006/0013). Gated by `mercator.imports.historical.enabled`:
+          when the gate is off the routes are absent (404), not merely forbidden.
+    post:
+      operationId: importByMonth
+      tags: [Admin]
+      summary: Trigger a historical import for one calendar month
+      description: |
+        Queues a massive historical import covering a whole calendar month and returns
+        immediately. The import runs asynchronously (staging tables + SQL merge, ADR-0006),
+        processing the month's publication days in incremental (ascending) date order; poll
+        the returned `statusUrl` for progress (the date and province currently being
+        imported). Always requires the `X-API-Key`, including in local dev where reads are
+        anonymous (ADR-0013).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ImportByMonthRequest' }
+      responses:
+        '202':
+          description: Import accepted; the job is queued.
+          headers:
+            Location: { $ref: '#/components/headers/JobLocation' }
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /admin/imports/{jobId}:
+    servers:
+      - url: /
+        description: |
+          Admin endpoints are served at the server root, off the public `/api/v1` read
+          namespace (ADR-0006/0013). Gated by `mercator.imports.historical.enabled`:
+          when the gate is off the routes are absent (404), not merely forbidden.
+    get:
+      operationId: getImportJob
+      tags: [Admin]
+      summary: Get historical-import job status
+      description: |
+        Returns the current status of a previously accepted historical-import job. While the
+        job is RUNNING the response carries a `progress` object naming the publication date and
+        province currently being imported (imports advance in incremental, ascending date
+        order). Poll until `status` reaches a terminal `COMPLETED` or `FAILED`. Always requires
+        the `X-API-Key` (ADR-0013).
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        '200':
+          description: The job's current status.
+          headers:
+            RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+            RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+            RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        Per-consumer API key. Required on all data endpoints in production; disabled in
+        the local/dev environment. Accepted keys come from an injected secret, never the
+        repository or image (ADR-0013).
+
+  parameters:
+    EntityId:
+      name: id
+      in: path
+      required: true
+      description: Entity identifier (UUIDv7).
+      schema:
+        type: string
+        format: uuid
+        maxLength: 36
+    SearchQuery:
+      name: q
+      in: query
+      required: true
+      description: Free-text query matched (fuzzy, normalised) against the company name.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 200
+    Overlap:
+      name: overlap
+      in: query
+      required: false
+      description: |
+        When true, restrict the link to parties that shared the person/address at the
+        same time (overlapping validity), and return the overlapping period.
+      schema:
+        type: boolean
+        default: false
+    OnDate:
+      name: date
+      in: query
+      required: false
+      description: Temporal filter — resolve the link as of this date (ISO-8601).
+      schema:
+        $ref: '#/components/schemas/DateValue'
+    Hops:
+      name: hops
+      in: query
+      required: false
+      description: Maximum traversal depth for the multi-hop query (bounded to protect the VPS).
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 3
+        default: 2
+    Page:
+      name: page
+      in: query
+      required: false
+      description: Zero-based page index.
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+        maximum: 100000
+        default: 0
+    PageSize:
+      name: size
+      in: query
+      required: false
+      description: Page size. Bounded by a hard maximum.
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+        maximum: 100
+        default: 20
+    JobId:
+      name: jobId
+      in: path
+      required: true
+      description: Opaque historical-import job identifier.
+      schema:
+        type: string
+        maxLength: 64
+
+  headers:
+    RateLimitLimit:
+      description: Per-key request budget for the current window.
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+        maximum: 1000000
+    RateLimitRemaining:
+      description: Requests remaining in the current window.
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+        maximum: 1000000
+    RateLimitReset:
+      description: Seconds until the current rate-limit window resets.
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+        maximum: 1000000
+    RetryAfter:
+      description: Seconds the client should wait before retrying.
+      schema:
+        type: integer
+        format: int32
+        minimum: 0
+        maximum: 1000000
+    JobLocation:
+      description: Relative URL of the accepted job's status resource.
+      schema:
+        type: string
+        format: uri-reference
+        maxLength: 200
+
+  responses:
+    BadRequest:
+      description: Malformed parameters (e.g. an invalid province code).
+      headers:
+        RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+        RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+        RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Unauthorized:
+      description: Missing or invalid API key (production).
+      headers:
+        RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+        RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+        RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    NotFound:
+      description: Unknown entity id.
+      headers:
+        RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+        RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+        RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    RateLimited:
+      description: Per-key request budget exceeded.
+      headers:
+        Retry-After: { $ref: '#/components/headers/RetryAfter' }
+        RateLimit-Limit: { $ref: '#/components/headers/RateLimitLimit' }
+        RateLimit-Remaining: { $ref: '#/components/headers/RateLimitRemaining' }
+        RateLimit-Reset: { $ref: '#/components/headers/RateLimitReset' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    ServerError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Problem' }
+
+  schemas:
+    ProvinceCode:
+      type: string
+      description: Two-letter Spanish province code.
+      pattern: '^[A-Za-z]{2}$'
+      minLength: 2
+      maxLength: 2
+      examples: ['PO', 'M', 'B']
+
+    EntityId:
+      type: string
+      format: uuid
+      description: |
+        Public path-resource identifier (UUIDv7). Used only for the entities addressable
+        by `/{id}` — companies and persons. Non-addressable nested records (acts,
+        appointments, addresses) use the integer `SerialId`.
+      maxLength: 36
+      examples: ['018f1a2b-3c4d-7e6f-8a9b-0c1d2e3f4a5b']
+
+    SerialId:
+      type: integer
+      format: int64
+      description: |
+        Internal serial identifier for records that are not addressable as their own
+        public endpoint (acts, appointments, company-address intervals, addresses). Exposed
+        read-only for cross-referencing within a response; not a stable public handle.
+      minimum: 1
+      maximum: 9223372036854775807
+      examples: [42]
+
+    DateValue:
+      type: string
+      format: date
+      description: An ISO-8601 calendar date.
+      maxLength: 10
+      examples: ['2024-05-20']
+
+    NullableDateValue:
+      type: [string, 'null']
+      format: date
+      description: An ISO-8601 calendar date, or null while the interval is open (current).
+      maxLength: 10
+      examples: ['2024-05-20']
+
+    Confidence:
+      type: number
+      format: double
+      description: |
+        Identity confidence in [0,1]. `1.0` for deterministic-key matches (company by
+        Hoja+province, address by exact normalised text); below `1.0` when routed through
+        a probabilistic person. Links below a configurable floor (default ≈0.7) are withheld.
+      minimum: 0
+      maximum: 1
+      examples: [0.92]
+
+    CompanyStatus:
+      type: string
+      description: Lifecycle status derived from terminal BORME acts.
+      enum: [ACTIVE, DISSOLVED, EXTINCT, MERGED]
+
+    EventType:
+      type: string
+      description: The registry event that produced an appointment row.
+      enum: [NOMBRAMIENTO, CESE, REELECCION, REVOCACION]
+
+    TemporalFlag:
+      type: string
+      description: |
+        Whether the parties were connected contemporaneously (`current`/`overlapping`) or
+        only across non-overlapping intervals (`historical`). A recency signal, kept
+        entirely separate from identity confidence.
+      enum: [current, overlapping, historical]
+
+    Temporal:
+      type: object
+      description: Temporal relevance of a link — never collapsed into the identity confidence.
+      required: [flag]
+      properties:
+        flag: { $ref: '#/components/schemas/TemporalFlag' }
+        recency_weight:
+          type: number
+          format: double
+          description: Optional, clearly-labelled recency weight; lowers perceived recency, not identity.
+          minimum: 0
+          maximum: 1
+      additionalProperties: false
+
+    Period:
+      type: object
+      description: A validity interval; `valid_to` is null while current.
+      required: [valid_from]
+      properties:
+        valid_from:
+          $ref: '#/components/schemas/DateValue'
+        valid_to:
+          $ref: '#/components/schemas/NullableDateValue'
+      additionalProperties: false
+
+    Company:
+      type: object
+      description: A registered company. Identified by Hoja + province (no NIF in the BORME).
+      required: [id, raw_name, norm_name, province_code, first_seen, last_seen, status]
+      properties:
+        id: { $ref: '#/components/schemas/EntityId' }
+        raw_name:
+          type: string
+          maxLength: 1000
+          examples: ['MERCATOR EJEMPLO SL']
+        norm_name:
+          type: string
+          maxLength: 1000
+          examples: ['mercator ejemplo sl']
+        legal_form:
+          type: [string, 'null']
+          maxLength: 200
+          examples: ['SL']
+        province_code: { $ref: '#/components/schemas/ProvinceCode' }
+        reg_hoja:
+          type: [string, 'null']
+          description: Registry sheet (Hoja). Null-Hoja companies are name-flagged, not deduped.
+          maxLength: 50
+          examples: ['PO 67350']
+        reg_tomo:
+          type: [string, 'null']
+          maxLength: 50
+        first_seen:
+          $ref: '#/components/schemas/DateValue'
+        last_seen:
+          $ref: '#/components/schemas/DateValue'
+        status: { $ref: '#/components/schemas/CompanyStatus' }
+        name_match_flag:
+          type: boolean
+          description: True when the company could not be keyed deterministically (weaker identity).
+          default: false
+      additionalProperties: false
+
+    Person:
+      type: object
+      description: An individual playing a role. No stable identifier — identity is probabilistic.
+      required: [id, raw_name, norm_name]
+      properties:
+        id: { $ref: '#/components/schemas/EntityId' }
+        raw_name:
+          type: string
+          maxLength: 500
+          examples: ['Juana Ejemplo Pérez']
+        norm_name:
+          type: string
+          maxLength: 500
+          examples: ['juana ejemplo perez']
+      additionalProperties: false
+
+    Address:
+      type: object
+      description: A registered domicile. Identified by exact normalised text within a province.
+      required: [id, raw_text, norm_text, province_code]
+      properties:
+        id: { $ref: '#/components/schemas/SerialId' }
+        raw_text:
+          type: string
+          maxLength: 1000
+        norm_text:
+          type: string
+          maxLength: 1000
+        municipality:
+          type: [string, 'null']
+          maxLength: 200
+        province_code: { $ref: '#/components/schemas/ProvinceCode' }
+      additionalProperties: false
+
+    BormeAct:
+      type: object
+      description: One act extracted from one document for one company — the audit trail.
+      required: [id, borme_id, pub_date, act_type, doc_seq]
+      properties:
+        id: { $ref: '#/components/schemas/SerialId' }
+        borme_id:
+          type: string
+          maxLength: 100
+          examples: ['BORME-A-2024-100-36']
+        cve:
+          type: [string, 'null']
+          description: Código de Verificación Electrónica of the source document.
+          maxLength: 100
+        pub_date:
+          $ref: '#/components/schemas/DateValue'
+        act_type:
+          type: string
+          description: |
+            Canonical act type (free vocabulary, e.g. CONSTITUCION, NOMBRAMIENTOS, CESES,
+            DISOLUCION, EXTINCION, FUSION, REAPERTURA, FE_ERRATAS).
+          maxLength: 100
+          examples: ['DISOLUCION']
+        datos_registrales:
+          type: [string, 'null']
+          maxLength: 500
+        inscripcion:
+          type: [string, 'null']
+          description: Inscripción/Asiento number, used for errata matching.
+          maxLength: 100
+        doc_seq:
+          type: integer
+          format: int32
+          description: Deterministic ordinal of the act block within its document.
+          minimum: 0
+          maximum: 100000
+        raw_block:
+          type: string
+          description: The raw act prose the act was parsed from.
+          maxLength: 20000
+      additionalProperties: false
+
+    Appointment:
+      type: object
+      description: A temporal role link between a person and a company.
+      required: [id, person_id, role, event_type, valid_from]
+      properties:
+        id: { $ref: '#/components/schemas/SerialId' }
+        person_id: { $ref: '#/components/schemas/EntityId' }
+        person:
+          $ref: '#/components/schemas/Person'
+        role:
+          type: string
+          description: |
+            Canonical role (free vocabulary, e.g. ADM_UNICO, ADM_SOLIDARIO, ADM_MANCOMUNADO,
+            APODERADO, LIQUIDADOR, SECRETARIO).
+          maxLength: 100
+          examples: ['ADM_UNICO']
+        event_type: { $ref: '#/components/schemas/EventType' }
+        act_id: { $ref: '#/components/schemas/SerialId' }
+        valid_from:
+          $ref: '#/components/schemas/DateValue'
+        valid_to:
+          $ref: '#/components/schemas/NullableDateValue'
+      additionalProperties: false
+
+    CompanyAddress:
+      type: object
+      description: A company's registered address over a validity interval.
+      required: [id, address, valid_from]
+      properties:
+        id: { $ref: '#/components/schemas/SerialId' }
+        address: { $ref: '#/components/schemas/Address' }
+        valid_from:
+          $ref: '#/components/schemas/DateValue'
+        valid_to:
+          $ref: '#/components/schemas/NullableDateValue'
+      additionalProperties: false
+
+    ActReference:
+      type: object
+      description: |
+        A compact, self-contained reference to the BORME act that recorded a historical
+        interval — the Datos registrales locator.
+      required: [act_id, borme_id, pub_date]
+      properties:
+        act_id: { $ref: '#/components/schemas/SerialId' }
+        borme_id:
+          type: string
+          maxLength: 100
+          examples: ['BORME-A-2024-100-36']
+        pub_date: { $ref: '#/components/schemas/DateValue' }
+        datos_registrales:
+          type: [string, 'null']
+          maxLength: 500
+        inscripcion:
+          type: [string, 'null']
+          description: Inscripción/Asiento number.
+          maxLength: 100
+      additionalProperties: false
+
+    AppointmentHistoryEntry:
+      type: object
+      description: A closed (past) appointment interval plus a reference to its source act.
+      required: [appointment, reference]
+      properties:
+        appointment: { $ref: '#/components/schemas/Appointment' }
+        reference: { $ref: '#/components/schemas/ActReference' }
+      additionalProperties: false
+
+    CompanyAddressHistoryEntry:
+      type: object
+      description: A closed (past) registered-address interval plus a reference to its source act.
+      required: [address, reference]
+      properties:
+        address: { $ref: '#/components/schemas/CompanyAddress' }
+        reference: { $ref: '#/components/schemas/ActReference' }
+      additionalProperties: false
+
+    CompanySearchResult:
+      type: object
+      description: A company match with its trigram similarity score.
+      required: [company, score]
+      properties:
+        company: { $ref: '#/components/schemas/Company' }
+        score:
+          type: number
+          format: double
+          description: Trigram similarity in [0,1]; higher is a closer name match.
+          minimum: 0
+          maximum: 1
+      additionalProperties: false
+
+    CompanyDetail:
+      type: object
+      description: |
+        A company plus its acts, the appointments and registered address currently in force,
+        and the closed (past) appointment and address intervals — each history entry carrying
+        a reference to the BORME act that recorded it.
+      required: [company, acts, current_appointments, current_address, appointment_history, address_history]
+      properties:
+        company: { $ref: '#/components/schemas/Company' }
+        acts:
+          type: array
+          maxItems: 10000
+          items: { $ref: '#/components/schemas/BormeAct' }
+        current_appointments:
+          type: array
+          description: Appointments currently in force (open interval — valid_to is null).
+          maxItems: 10000
+          items: { $ref: '#/components/schemas/Appointment' }
+        current_address:
+          description: The current registered address (open interval), or null if none is on record.
+          oneOf:
+            - $ref: '#/components/schemas/CompanyAddress'
+            - type: 'null'
+        appointment_history:
+          type: array
+          description: Closed (past) appointment intervals, each with a reference to its source act.
+          maxItems: 10000
+          items: { $ref: '#/components/schemas/AppointmentHistoryEntry' }
+        address_history:
+          type: array
+          description: Closed (past) registered-address intervals, each with a reference to its source act.
+          maxItems: 10000
+          items: { $ref: '#/components/schemas/CompanyAddressHistoryEntry' }
+      additionalProperties: false
+
+    PersonCompanyAssociation:
+      type: object
+      description: A company the person is/was associated with, with role and confidence.
+      required: [company, role, valid_from, confidence]
+      properties:
+        company: { $ref: '#/components/schemas/Company' }
+        role:
+          type: string
+          maxLength: 100
+          examples: ['ADM_SOLIDARIO']
+        event_type: { $ref: '#/components/schemas/EventType' }
+        valid_from:
+          $ref: '#/components/schemas/DateValue'
+        valid_to:
+          $ref: '#/components/schemas/NullableDateValue'
+        confidence: { $ref: '#/components/schemas/Confidence' }
+      additionalProperties: false
+
+    PersonDetail:
+      type: object
+      description: A person and the companies/roles they are associated with (with confidence).
+      required: [person, associations]
+      properties:
+        person: { $ref: '#/components/schemas/Person' }
+        associations:
+          type: array
+          maxItems: 10000
+          items: { $ref: '#/components/schemas/PersonCompanyAssociation' }
+      additionalProperties: false
+
+    SharedAdministratorLink:
+      type: object
+      description: |
+        Two companies linked by a shared resolved administrator. Identity confidence and
+        temporal relevance are reported as separate fields, never collapsed.
+      required: [company, shared_person, roles, identity_confidence, temporal]
+      properties:
+        company:
+          $ref: '#/components/schemas/Company'
+          description: The linked company (the counterpart of the requested company).
+        shared_person: { $ref: '#/components/schemas/Person' }
+        roles:
+          type: array
+          description: Role(s) the shared person held across the two companies.
+          maxItems: 100
+          items:
+            type: string
+            maxLength: 100
+        identity_confidence: { $ref: '#/components/schemas/Confidence' }
+        temporal: { $ref: '#/components/schemas/Temporal' }
+        overlapping_period:
+          $ref: '#/components/schemas/Period'
+          description: Present only when constrained to overlapping validity.
+      additionalProperties: false
+
+    SharedAddressLink:
+      type: object
+      description: |
+        Two companies linked by a shared normalised registered address (deterministic;
+        identity confidence `1.0`, even when historical).
+      required: [company, address, identity_confidence, temporal]
+      properties:
+        company:
+          $ref: '#/components/schemas/Company'
+          description: The linked company (the counterpart of the requested company).
+        address: { $ref: '#/components/schemas/Address' }
+        identity_confidence: { $ref: '#/components/schemas/Confidence' }
+        temporal: { $ref: '#/components/schemas/Temporal' }
+        overlapping_period:
+          $ref: '#/components/schemas/Period'
+          description: Present only when constrained to overlapping validity.
+      additionalProperties: false
+
+    ConnectionHop:
+      type: object
+      description: One step in a multi-hop path through the company⇄person graph.
+      required: [entity_type, confidence]
+      properties:
+        entity_type:
+          type: string
+          enum: [company, person]
+        company:
+          $ref: '#/components/schemas/Company'
+          description: Present when entity_type is `company`.
+        person:
+          $ref: '#/components/schemas/Person'
+          description: Present when entity_type is `person`.
+        confidence:
+          $ref: '#/components/schemas/Confidence'
+          description: Per-hop identity confidence (deterministic hops contribute 1.0).
+      additionalProperties: false
+
+    Connection:
+      type: object
+      description: A path connecting the requested company to another through shared people.
+      required: [path, path_identity_confidence, temporal]
+      properties:
+        path:
+          type: array
+          description: Ordered hops from the requested company to the connected one.
+          minItems: 1
+          maxItems: 10
+          items: { $ref: '#/components/schemas/ConnectionHop' }
+        path_identity_confidence:
+          $ref: '#/components/schemas/Confidence'
+          description: Product of the per-hop identity confidences.
+        temporal: { $ref: '#/components/schemas/Temporal' }
+      additionalProperties: false
+
+    PageMeta:
+      type: object
+      description: Pagination metadata. `truncated` flags any bounded/over-cap result.
+      required: [page, size, truncated]
+      properties:
+        page:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 100000
+        size:
+          type: integer
+          format: int32
+          minimum: 0
+          maximum: 100
+        total:
+          type: [integer, 'null']
+          format: int64
+          description: Total matches when known; null when not counted.
+          minimum: 0
+          maximum: 9223372036854775807
+        truncated:
+          type: boolean
+          description: True when results were bounded (page cap, hop cap or result cap).
+      additionalProperties: false
+
+    CompanySearchPage:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/CompanySearchResult' }
+        meta: { $ref: '#/components/schemas/PageMeta' }
+      additionalProperties: false
+
+    SharedAdministratorPage:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/SharedAdministratorLink' }
+        meta: { $ref: '#/components/schemas/PageMeta' }
+      additionalProperties: false
+
+    SharedAddressPage:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/SharedAddressLink' }
+        meta: { $ref: '#/components/schemas/PageMeta' }
+      additionalProperties: false
+
+    ConnectionPage:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/Connection' }
+        meta: { $ref: '#/components/schemas/PageMeta' }
+      additionalProperties: false
+
+    Health:
+      type: object
+      description: Probe result — up/down only, no internal state.
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [UP, DOWN]
+      additionalProperties: false
+
+    ImportByDateRequest:
+      type: object
+      description: Body for a by-date historical import.
+      required: [date]
+      properties:
+        date:
+          type: string
+          format: date
+          description: The BORME publication day to import (ISO-8601, YYYY-MM-DD).
+          maxLength: 10
+          examples: ['2024-05-20']
+      additionalProperties: false
+
+    ImportByMonthRequest:
+      type: object
+      description: Body for a by-month historical import.
+      required: [month]
+      properties:
+        month:
+          type: string
+          description: The calendar month to import (ISO-8601 year-month, YYYY-MM).
+          pattern: '^\d{4}-\d{2}$'
+          minLength: 7
+          maxLength: 7
+          examples: ['2024-05']
+      additionalProperties: false
+
+    ImportJob:
+      type: object
+      description: |
+        Status view of an asynchronous historical-import job. Returned both on acceptance
+        (202) and by the status endpoint.
+      required: [jobId, kind, target, status, statusUrl]
+      properties:
+        jobId:
+          type: string
+          description: Opaque job identifier.
+          maxLength: 64
+          examples: ['018f1a2b-3c4d-7e6f-8a9b-0c1d2e3f4a5b']
+        kind:
+          type: string
+          description: Whether the import targets a single day, a whole month, or all history.
+          enum: [BY_DATE, BY_MONTH, FULL]
+        target:
+          type: string
+          description: |
+            The ISO target covered — YYYY-MM-DD for BY_DATE, YYYY-MM for BY_MONTH, an ISO date
+            range (from/to) for FULL.
+          maxLength: 25
+          examples: ['2009-01-02/2026-06-21']
+        status:
+          type: string
+          description: Lifecycle status of the job.
+          enum: [ACCEPTED, RUNNING, COMPLETED, FAILED]
+        detail:
+          type: string
+          description: Human-readable detail, e.g. a failure reason. Absent while none applies.
+          maxLength: 2000
+        progress:
+          description: |
+            Live progress, present only while `status` is RUNNING — the publication date and
+            province currently being imported. Imports always advance in incremental
+            (ascending) date order, so this date moves monotonically forward. Absent before
+            the job starts running and after it reaches a terminal state.
+          oneOf:
+            - $ref: '#/components/schemas/ImportProgress'
+            - type: 'null'
+        statusUrl:
+          type: string
+          format: uri-reference
+          description: Relative URL to poll for this job's status.
+          maxLength: 200
+          examples: ['/admin/imports/018f1a2b-3c4d-7e6f-8a9b-0c1d2e3f4a5b']
+      additionalProperties: false
+
+    ImportProgress:
+      type: object
+      description: |
+        The point a RUNNING import has currently reached. Because imports execute in
+        incremental (ascending) date order, `current_date` advances monotonically.
+      required: [current_date, current_province]
+      properties:
+        current_date:
+          type: string
+          format: date
+          description: The BORME publication day currently being imported (ISO-8601, YYYY-MM-DD).
+          maxLength: 10
+          examples: ['2024-05-20']
+        current_province:
+          $ref: '#/components/schemas/ProvinceCode'
+      additionalProperties: false
+
+    Problem:
+      type: object
+      description: Consistent JSON error shape returned by every error response.
+      required: [status, error]
+      properties:
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code.
+          minimum: 100
+          maximum: 599
+        error:
+          type: string
+          description: Short, stable error label.
+          maxLength: 200
+          examples: ['Not Found']
+        detail:
+          type: string
+          description: Human-readable explanation; never leaks suppressed data or internals.
+          maxLength: 2000
+      additionalProperties: false

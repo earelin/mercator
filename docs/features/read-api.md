@@ -86,6 +86,11 @@ flowchart LR
   [Spec 6](../specs/06-public-api.md), [historical-backfill](historical-backfill.md)).
 - Production rejects unauthenticated requests with `401`; local dev serves without a key;
   switching is config-only (no code/build change) and fails closed.
+- The running API conforms to the OpenAPI contract: Schemathesis (cases generated from
+  [`api.openapi.yaml`](../specs/api.openapi.yaml)) reports no drift (status / response-schema /
+  content-type / header conformance) and no security violations — notably `ignored_auth`
+  (every guarded endpoint enforces the `X-API-Key`) and `negative_data_rejection` (malformed
+  input is rejected, matching the contract's `additionalProperties: false`).
 
 ## Implementation issues
 
@@ -93,7 +98,7 @@ flowchart LR
 - [ ] API-key security filter (`X-API-Key`), env-toggled, fail-closed; keys from env/secret;
       probes excluded; `401` on missing/invalid.
 - [ ] Per-environment config (Micronaut environments `dev`/`prod`); document the env vars.
-- [ ] Company search endpoint (trigram ranking + province filter + pagination).
+- [ ] Company search endpoint (trigram ranking + pagination).
 - [ ] Company detail endpoint (acts + temporal admins + addresses).
 - [ ] Person detail endpoint (companies/roles + confidence).
 - [ ] Temporal as-of query (`?at=YYYY-MM-DD`) on company/person detail — administrators and
@@ -104,3 +109,8 @@ flowchart LR
 - [ ] Pagination (default + hard max page size; truncation flag) on all collection endpoints.
 - [ ] Consistent JSON error model (`400`/`401`/`404`/`429`/`5xx`) + per-key rate limiting.
 - [ ] OpenAPI spec + API docs (document the `X-API-Key` requirement and the error/pagination shapes).
+- [ ] Contract conformance + security tests: Schemathesis against the running app
+      (drift + `ignored_auth`/`negative_data_rejection`), in a dedicated heavyweight script
+      [`script/api-conformance.sh`](../../script/api-conformance.sh) (kept out of
+      [`script/ci.sh`](../../script/ci.sh)); a GitHub job that boots the app + Postgres service
+      runs it separately from the main CI pipeline.

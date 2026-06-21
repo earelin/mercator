@@ -10,6 +10,11 @@
 #   5. Gradle check (Checkstyle, CPD/duplication, tests) -> ./gradlew check
 #   6. Gradle build                -> ./gradlew build
 #   7. SQL lint                    -> sqlfluff lint
+#   8. OpenAPI validate + security -> spectral (spectral:oas + OWASP ruleset)
+#
+# Step 8 statically lints the contract document. The heavyweight dynamic check — driving a
+# *running* server against the contract (drift + security) — lives in a separate script,
+# ./script/api-conformance.sh (schemathesis), kept out of this pipeline deliberately.
 #
 # Run it manually:        ./script/ci.sh
 # Skip external links:    CHECK_EXTERNAL=0 ./script/ci.sh
@@ -133,6 +138,24 @@ if command -v sqlfluff >/dev/null 2>&1; then
   if sqlfluff lint "$SQL_DIR"; then ok "SQL lint"; else err "SQL lint issues"; fail=1; fi
 else
   err "sqlfluff not found — install: pip install sqlfluff (or: brew install sqlfluff)"; fail=1
+fi
+
+# --- 8) OpenAPI validate + security (spectral) ----------------------------
+bold "OpenAPI lint + security (spectral)"
+OPENAPI_FILE="docs/specs/api.openapi.yaml"
+if [ ! -f "$OPENAPI_FILE" ]; then
+  err "OpenAPI doc not found: $OPENAPI_FILE"; fail=1
+elif command -v npx >/dev/null 2>&1; then
+  # spectral:oas = structural validation; spectral-owasp-ruleset = API security checks.
+  # Both packages are passed to npx so the .spectral.yaml `extends` resolve (no package.json).
+  if npx --yes --package=@stoplight/spectral-cli --package=@stoplight/spectral-owasp-ruleset \
+       spectral lint "$OPENAPI_FILE" --ruleset .spectral.yaml --fail-severity=warn; then
+    ok "OpenAPI lint + security"
+  else
+    err "OpenAPI lint/security issues"; fail=1
+  fi
+else
+  err "npx not found"; fail=1
 fi
 
 # --- Result ---------------------------------------------------------------
