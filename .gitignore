@@ -29,6 +29,7 @@ node_modules/
 
 # ---- Local tooling ----
 .claude/
+!.claude/settings.json
 
 # ---- OS / misc ----
 .DS_Store
