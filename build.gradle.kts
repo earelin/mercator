@@ -85,6 +85,44 @@ dependencies {
     testRuntimeOnly(libs.logback.classic)
 }
 
+// A dedicated `integration` source set (src/integration/java), defined with the JVM Test Suite
+// plugin, holds the tests that exercise interprocess communication across the app's edges — the
+// controllers over Micronaut's embedded HTTP server (driven with REST Assured), the JDBC adapters
+// against a real Postgres (Testcontainers), and the HTTP transport over a socket. The fast `test`
+// suite keeps the pure-logic unit tests (domain, plus the in-memory infrastructure ones). The
+// integration suite is NOT wired into `check`; run it on demand with `./gradlew integration`.
+testing {
+    suites {
+        val integration by registering(JvmTestSuite::class) {
+            useJUnitJupiter(libs.versions.junit.jupiter)
+            dependencies {
+                // The production code under test (main classes + resources, incl. the Flyway
+                // migrations the persistence tests apply).
+                implementation(project())
+                // REST Assured wired to the embedded server's port via micronaut-test (version
+                // managed by the Micronaut BOM, inherited through the config extension below).
+                implementation("io.micronaut.test:micronaut-test-rest-assured")
+            }
+            targets.configureEach {
+                // Only orders the two when both are asked for in one invocation; `check` runs
+                // neither integration nor this ordering edge.
+                testTask.configure { shouldRunAfter(tasks.named("test")) }
+            }
+        }
+    }
+}
+
+// The Micronaut Gradle plugin only auto-wires the `main`/`test` configurations (the platform BOM,
+// micronaut-test(-junit5), and the micronaut-inject-java annotation processor). Have the
+// `integration` configurations extend their `test` counterparts so the new source set inherits all
+// of it — plus the shared test deps (http-client, Testcontainers, assertj-db, flyway, postgresql).
+configurations {
+    named("integrationImplementation") { extendsFrom(configurations.testImplementation.get()) }
+    named("integrationRuntimeOnly") { extendsFrom(configurations.testRuntimeOnly.get()) }
+    named("integrationCompileOnly") { extendsFrom(configurations.testCompileOnly.get()) }
+    named("integrationAnnotationProcessor") { extendsFrom(configurations.testAnnotationProcessor.get()) }
+}
+
 checkstyle {
     toolVersion = libs.versions.checkstyle.get()
     configDirectory.set(rootProject.layout.projectDirectory.dir("config/checkstyle"))
