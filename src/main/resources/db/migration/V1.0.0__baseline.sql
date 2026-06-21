@@ -88,7 +88,7 @@ INSERT INTO province (code, name) VALUES
 --   MERGED           — FUSION act received; absorbed by another company.
 -- A REAPERTURA act resets status back to ACTIVE.
 CREATE TABLE company (
-    id              BIGSERIAL NOT NULL,
+    id              UUID      NOT NULL DEFAULT uuidv7(),
     raw_name        TEXT      NOT NULL,
     norm_name       TEXT      NOT NULL,
     legal_form      TEXT,
@@ -109,7 +109,7 @@ CREATE INDEX idx_company_norm_name ON company USING gin (norm_name gin_trgm_ops)
 
 -- person: no stable identifier; probabilistic resolution only (ADR-0009).
 CREATE TABLE person (
-    id         BIGSERIAL NOT NULL,
+    id         UUID      NOT NULL DEFAULT uuidv7(),
     raw_name   TEXT      NOT NULL,
     norm_name  TEXT      NOT NULL,
     suppressed BOOLEAN   NOT NULL DEFAULT FALSE,
@@ -141,7 +141,7 @@ CREATE TABLE borme_act (
     cve               TEXT,
     pub_date          DATE      NOT NULL,
     province_code     CHAR(2)   NOT NULL REFERENCES province (code),
-    company_id        BIGINT    NOT NULL REFERENCES company (id),
+    company_id        UUID      NOT NULL REFERENCES company (id),
     act_type          TEXT      NOT NULL,
     datos_registrales TEXT,
     inscripcion       TEXT,
@@ -171,8 +171,8 @@ CREATE INDEX idx_borme_act_company_id ON borme_act (company_id);
 -- close_appointment_interval() sets valid_to when a cese is processed.
 CREATE TABLE appointment (
     id         BIGSERIAL NOT NULL,
-    company_id BIGINT    NOT NULL REFERENCES company (id),
-    person_id  BIGINT    NOT NULL REFERENCES person (id),
+    company_id UUID      NOT NULL REFERENCES company (id),
+    person_id  UUID      NOT NULL REFERENCES person (id),
     role       TEXT      NOT NULL,
     event_type TEXT      NOT NULL
                    CHECK (event_type IN ('NOMBRAMIENTO', 'CESE', 'REELECCION', 'REVOCACION')),
@@ -195,7 +195,7 @@ CREATE INDEX idx_appointment_person_id  ON appointment (person_id);
 -- domicilio is registered.
 CREATE TABLE company_address (
     id         BIGSERIAL NOT NULL,
-    company_id BIGINT    NOT NULL REFERENCES company (id),
+    company_id UUID      NOT NULL REFERENCES company (id),
     address_id BIGINT    NOT NULL REFERENCES address (id),
     act_id     BIGINT    REFERENCES borme_act (id),
     valid_from DATE      NOT NULL,
@@ -220,7 +220,7 @@ CREATE INDEX idx_company_address_company_id ON company_address (company_id);
 CREATE TABLE act_correction (
     id                 BIGSERIAL NOT NULL,
     errata_act_id      BIGINT    NOT NULL REFERENCES borme_act (id),
-    target_company_id  BIGINT    NOT NULL REFERENCES company (id),
+    target_company_id  UUID      NOT NULL REFERENCES company (id),
     target_inscripcion TEXT      NOT NULL,
     target_act_id      BIGINT    REFERENCES borme_act (id),
     field              TEXT      NOT NULL,
@@ -294,7 +294,7 @@ CREATE TABLE borme_log (
 -- (ADR-0006).
 CREATE TABLE match_candidate (
     id              BIGSERIAL    NOT NULL,
-    company_id      BIGINT       NOT NULL REFERENCES company (id),
+    company_id      UUID         NOT NULL REFERENCES company (id),
     external_ref    TEXT         NOT NULL,
     external_source TEXT         NOT NULL,
     score           NUMERIC(5,4) NOT NULL CHECK (score BETWEEN 0.0 AND 1.0),
@@ -337,8 +337,8 @@ CREATE TABLE erasure_log (
 -- Called by IngestionService before inserting a new NOMBRAMIENTO (to close the
 -- prior open tenure) and when processing a CESE or REVOCACION event.
 CREATE OR REPLACE FUNCTION close_appointment_interval(
-    p_company_id BIGINT,
-    p_person_id  BIGINT,
+    p_company_id UUID,
+    p_person_id  UUID,
     p_role       TEXT,
     p_close_date DATE
 ) RETURNS VOID LANGUAGE plpgsql AS $$
@@ -357,7 +357,7 @@ $$;
 -- Called by IngestionService before inserting a new domicilio so the previous
 -- registered address interval is properly terminated.
 CREATE OR REPLACE FUNCTION close_company_address_interval(
-    p_company_id BIGINT,
+    p_company_id UUID,
     p_close_date DATE
 ) RETURNS VOID LANGUAGE plpgsql AS $$
 BEGIN
