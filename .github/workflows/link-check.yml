@@ -1,0 +1,48 @@
+# ci.sh step 2 (lychee), decoupled from PR CI: external link liveness is a known CI
+# flakiness source and should not block merges. Runs weekly and on demand instead.
+# Trigger manually with: gh workflow run link-check.yml
+name: Link check
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # Mondays 06:00 UTC (matches the Dependabot cadence)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: link-check
+  cancel-in-progress: true
+
+jobs:
+  links:
+    name: Lychee
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      # Persist lychee's response cache across runs so repeat external checks are cheap.
+      - name: Restore lychee cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .lycheecache
+          key: lychee-${{ github.run_id }}
+          restore-keys: lychee-
+
+      # Internal links + heading anchors, offline (no network). lychee honours .gitignore,
+      # so build/, node_modules/ and other generated dirs are skipped automatically.
+      - name: Internal links + anchors (offline)
+        uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2.8.0
+        with:
+          args: "--offline --include-fragments --no-progress './**/*.md'"
+          fail: true
+
+      # External URLs over the network, with the script's accepted status codes.
+      - name: External links
+        uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2.8.0
+        with:
+          args: "--cache --max-retries 2 --max-concurrency 4 --accept 200,206,429 --no-progress './**/*.md'"
+          fail: true
