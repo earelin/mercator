@@ -102,6 +102,9 @@ testing {
                 // REST Assured wired to the embedded server's port via micronaut-test (version
                 // managed by the Micronaut BOM, inherited through the config extension below).
                 implementation("io.micronaut.test:micronaut-test-rest-assured")
+                // WireMock (standalone/shaded, so its Jetty/Jackson stay isolated from the
+                // Micronaut BOM) emulates the BOE datosabiertos API for the summary HTTP client IT.
+                implementation(libs.wiremock)
             }
             targets.configureEach {
                 // Only orders the two when both are asked for in one invocation; `check` runs

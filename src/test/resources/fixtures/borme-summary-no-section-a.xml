@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<response>
+  <status>
+    <code>200</code>
+    <text>OK</text>
+  </status>
+  <data>
+    <sumario>
+      <metadatos>
+        <publicacion>BORME</publicacion>
+        <fecha_publicacion>20260610</fecha_publicacion>
+      </metadatos>
+      <diario numero="10">
+        <sumario_diario>
+          <identificador>BORME-S-20260610</identificador>
+          <url_pdf szBytes="3210" szKB="3">https://www.boe.es/boe/dias/2026/06/10/pdfs/BORME-S-20260610.pdf</url_pdf>
+        </sumario_diario>
+        <seccion codigo="C" nombre="Anuncios y avisos legales">
+          <apartado codigo="010" nombre="CONVOCATORIAS DE JUNTAS">
+            <item>
+              <identificador>BORME-C-2026-5000</identificador>
+              <titulo>OTRA SOCIEDAD ANÓNIMA</titulo>
+              <url_pdf szBytes="1024" szKB="1">https://www.boe.es/borme/dias/2026/06/10/pdfs/BORME-C-2026-5000.pdf</url_pdf>
+              <url_xml>https://www.boe.es/diario_borme/xml.php?id=BORME-C-2026-5000</url_xml>
+              <url_html>https://www.boe.es/diario_borme/txt.php?id=BORME-C-2026-5000</url_html>
+            </item>
+          </apartado>
+        </seccion>
+      </diario>
+    </sumario>
+  </data>
+</response>
