@@ -1,176 +1,82 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code working in this repository.
 
-## Project status
+## Read first
 
-**Early implementation.** A single-project Gradle build (one Micronaut application artifact). The
-document-fetch/parse/cache/persistence layers and the full Flyway schema (a single baseline
-migration, `V1.0.0__baseline.sql`) exist; the ingestion service, resolution functions, read API
-and the historical-import engine are still to be built
-(the import endpoint is scaffolded). The specs, features and ADRs in `docs/` are the
-authoritative design and **must be read before writing code** — they define what to build and
-the constraints that govern it.
+`docs/` is the authoritative design — read it before writing code. It defines what to build and the constraints that govern it.
 
-## Build, lint and test commands
-
-```bash
-./gradlew build          # compile + test
-./gradlew test           # run the fast unit tests only
-./gradlew integration    # run the integration tests (controllers + adapters; needs Docker)
-./gradlew acceptance     # build the app image + run the black-box acceptance tests over Docker Compose (needs Docker)
-./gradlew run            # start the Micronaut server locally
-./gradlew check          # unit test + Checkstyle + PMD + CPD + Error Prone/NullAway + SpotBugs/FindSecBugs (no Docker; excludes integration)
-```
-
-The database must be running (`docker compose up -d`) before starting the server. The
-`integration` suite stands up its own Postgres via Testcontainers, so the Docker daemon must be
-available when running it.
-
-## Scripts
-
-Two helper scripts live in `scripts/` (run from anywhere — they `cd` to the repo root):
-
-- `scripts/ci.sh` — the **local CI pipeline**, also wired as a git pre-push hook (see
-  `.githooks/pre-push`; enable with `git config core.hooksPath .githooks`). It statically checks
-  every Markdown file (markdownlint-cli2 formatting, lychee internal + external links/anchors,
-  `mmdc` Mermaid syntax), lints Docker Compose files (`dclint` via `npx`), runs `./gradlew check`
-  and `./gradlew build`, lints the Flyway SQL (`sqlfluff` over `src/main/resources/db/migration`),
-  validates the OpenAPI contract for structure + security (`spectral` with `spectral:oas` +
-  the OWASP ruleset over `docs/specs/api.openapi.yaml`), and runs a **SAST security scan**
-  (`opengrep`, the open-source Semgrep fork) over the production sources `src/main` with the
-  Semgrep-compatible `p/java` + `p/secrets` + `p/security-audit` rulesets — scoped to `src/main`
-  like SpotBugs, since test fixtures legitimately do "unsafe" things. Finally it lints the GitHub
-  Actions workflows (`actionlint`, which also shellchecks the `run:` scripts when `shellcheck` is on
-  PATH). Skip external link checks with `CHECK_EXTERNAL=0`. Requires markdownlint-cli2, lychee, mmdc
-  (+ a system Chrome/Chromium), npx, sqlfluff, opengrep, and actionlint installed locally (the
-  opengrep ruleset fetch needs network on first run, then caches).
-- `scripts/api-conformance.sh` — the heavyweight **dynamic** API check, deliberately kept out of
-  `ci.sh`. It drives a *running* server with property-based cases generated from the OpenAPI doc
-  (`schemathesis`) and asserts responses conform — drift (status code / schema / content type /
-  headers) and security (malformed-input rejection, admin-endpoint auth enforcement per ADR-0013).
-  Needs a reachable server (`./gradlew run` first); configure via `MERCATOR_BASE_URL` (default
-  `http://localhost:8080`), `MERCATOR_API_KEY` (sent as `X-API-Key`), and
-  `SCHEMATHESIS_MAX_EXAMPLES` (default 25 per operation). Requires `schemathesis` (`st`) installed.
-
-## Code style
-
-- **Comment sparingly.** Write self-explanatory code (clear names, small methods) and let it carry
-  the intent. Add a comment only when it earns its place: a non-obvious *why* (a rationale, a
-  workaround, a spec/ADR reference, a subtle invariant). Do **not** narrate *what* the code already
-  says, restate the method or field name, or leave section-divider banners, changelog notes, or
-  TODOs-as-documentation. Prefer deleting a stale comment over updating it. Match the comment density
-  of the surrounding code — when in doubt, fewer.
-
-## Testing conventions
-
-- **Prefer stubs over mocks.** Drive behaviour through stubbed inputs and assert on observable
-  outcomes / captured state — not on interactions via `verify()`. For stateful or side-effecting
-  collaborators (a cache, a recorder, a call counter), use a small hand-written stub double that
-  captures state and assert on that state; reserve Mockito for **stubbing** (`when(…).thenReturn(…)`)
-  stateless inputs, not interaction verification.
-- **AssertJ** (`assertThat`) for assertions, not native JUnit assertions; **assertj-db** for
-  database-backed checks.
-- Test method names are **snake_case**.
-- **Three source sets (JVM Test Suite plugin).** `src/test` holds the fast **unit** tests (the
-  `domain` core plus the pure-logic/in-memory `infrastructure` ones) — no Docker, run by
-  `./gradlew test`/`check`. `src/integration` holds the **integration** tests that cross a process
-  boundary: the controllers over Micronaut's embedded HTTP server (driven with **REST Assured**),
-  the JDBC adapters against a real Postgres (Testcontainers), and the HTTP transport over a socket.
-  Run them with `./gradlew integration` (needs Docker); they are deliberately **not** part of
-  `check`. `src/acceptance` holds the **black-box acceptance** tests: they build the production
-  Docker image (via `dockerBuild`, its default `<project>:latest` tag), stand up the full stack (the
-  app image, a Postgres, and a **WireMock** simulating the external BORME/BOE HTTP services) with **Docker
-  Compose** through Testcontainers' `ComposeContainer` (the project's `docker-compose.yml`, app behind
-  the `app` compose profile; WireMock stubs under `docker/acceptance/wiremock`), and drive the
-  running container's REST API over the network with **REST Assured**. Unlike `integration` they never touch
-  the production classes — the app is opaque, reached only over HTTP — so the suite is **isolated
-  from the Micronaut platform BOM** (it declares its own REST Assured/Testcontainers versions from
-  the catalog). Run them with `./gradlew acceptance` (needs Docker + a built image); the test task is
-  wired into **neither `check` nor `build`**.
-- `./gradlew check` runs Checkstyle (shared config in `config/checkstyle/`), PMD (curated ruleset
-  in `config/pmd/`) and CPD (duplication); keep all three green. It also compiles with **Error Prone**
-  (javac bug-pattern checks) and **NullAway** (nullness analysis, configured inline in
-  `build.gradle.kts`): NullAway runs on the production `main` sources only, treats the
-  `net.earelin.mercator` packages as `@NonNull` by default, and fails the build on an unannotated
-  nullable dereference — annotate genuinely-nullable record components, params and returns with the
-  Micronaut `io.micronaut.core.annotation.@Nullable` already used across the codebase.
-- `./gradlew check` also runs **SpotBugs** with the **Find Security Bugs** detector pack (bytecode
-  analysis: bugs + security patterns like injection, weak crypto, SSRF, XXE). Like NullAway it runs
-  on the production `main` sources only (test/integration fixtures trip the security detectors with
-  deliberately "unsafe" code). The exclude filter lives in `config/spotbugs/exclude.xml` — it drops
-  Micronaut's generated classes plus a few scoped, justified false positives / accepted trade-offs;
-  prefer fixing a finding over widening the filter, and keep each filter entry commented.
+- `docs/specs/` — **what** the system does.
+- `docs/features/` — **how** each spec is implemented, plus the issue backlog.
+- `docs/architecture/` — **why** (ADRs). Start at [`docs/architecture/README.md`](docs/architecture/README.md): it indexes the ADRs and carries a current-state architecture overview — the recommended entry point.
+- [`docs/CLAUDE.md`](docs/CLAUDE.md) — doc organisation, authoring conventions, ADR lifecycle.
 
 ## What Mercator is
 
-Mercator turns Spain's official mercantile gazette — the **BORME** (*Boletín Oficial del
-Registro Mercantil*) — into a queryable database and graph of companies, the people
-associated with them (administrators, attorneys…), and the links between them (shared
-administrators, shared registered address, multi-hop relationships). Its primary consumer is
-a sibling **public-contracts** project that detects related bidders/awardees. The mandate is
-**cheap and simple**: a single EU VPS, free public data, no commercial BORME API.
+Turns Spain's official mercantile gazette — the **BORME** (*Boletín Oficial del Registro Mercantil*) — into a queryable database and graph of companies, their associated people (administrators, attorneys…), and the links between them (shared administrators, shared address, multi-hop). Primary consumer is a sibling **public-contracts** project detecting related bidders/awardees. Mandate: **cheap and simple** — a single EU VPS, free public data, no commercial BORME API.
+
+**Status: early implementation.** The fetch/parse/cache/persistence layers and the Flyway baseline (`V1.0.0__baseline.sql`) exist. The ingestion service, resolution functions, read API, and historical-import engine are still to be built (the import endpoint is scaffolded).
+
+## Commands
+
+```bash
+./gradlew run            # start the server (needs `docker compose up -d` first)
+./gradlew check          # unit tests + Checkstyle + PMD + CPD + Error Prone/NullAway + SpotBugs/FindSecBugs (no Docker)
+./gradlew test           # fast unit tests only
+./gradlew integration    # integration tests — controllers + adapters (needs Docker; not in `check`)
+./gradlew acceptance     # black-box tests over Docker Compose (needs Docker; not in `check`/`build`)
+./gradlew build          # compile + test
+```
+
+## Verifying changes — run `scripts/ci.sh`
+
+`scripts/ci.sh` is the local CI pipeline (also a git pre-push hook). It accepts named checks: `./scripts/ci.sh <check>...`. **Run only the checks matching what you changed** — full `./scripts/ci.sh` is the catch-all.
+
+| You changed… | Run |
+|---|---|
+| `*.md` (any Markdown) | `markdown links mermaid` |
+| Docker Compose files (`docker-compose.yml`, `compose/*`) | `compose` |
+| Java in `src/main` | `check build opengrep` |
+| Java in `src/test` / `src/integration` / `src/acceptance` | `check build` |
+| `src/main/resources/db/migration/*.sql` (Flyway) | `sql` |
+| `docs/specs/api.openapi.yaml` | `openapi` |
+| `.github/workflows/*` | `actions` |
+
+Notes: `links` hits the network — skip external with `CHECK_EXTERNAL=0`. `opengrep` (SAST) and SpotBugs/NullAway scope to `src/main` only — test fixtures legitimately do "unsafe" things. Tooling required: markdownlint-cli2, lychee, mmdc (+ system Chrome), npx, sqlfluff, opengrep, actionlint. `./scripts/ci.sh --help` lists every check.
+
+`scripts/api-conformance.sh` (kept out of `ci.sh`) drives a **running** server with property-based cases from the OpenAPI doc (`schemathesis`), asserting response conformance + admin-auth enforcement. Needs `./gradlew run` first; configure via `MERCATOR_BASE_URL`, `MERCATOR_API_KEY`, `SCHEMATHESIS_MAX_EXAMPLES`.
 
 ## Repository layout
 
-A **single-project Gradle 9.5** build (`settings.gradle.kts`, version pinned via the wrapper)
-producing one Java 25 + Micronaut server artifact. Sources live at the repo root under `src/`,
-with layers separated by **package** (not by Gradle module):
+Single-project **Gradle 9.5** build (pinned via the wrapper) producing one **Java 25 + Micronaut** server artifact. Layers are separated by **package**, not by Gradle module:
 
-- `docs/` — specs, features, architecture (design source of truth; see below).
-- `net.earelin.mercator.domain.*` — the domain/application core: model, ports, and the
-  ingestion/normalisation/parsing logic. Depends on no *other layer* (no infrastructure/application
-  imports), but a domain data object **may** carry persistence (`@MappedEntity`) and serialization
-  (`@Serdeable`) annotations and serve directly as the DB entity / API body — a separate DTO is
-  introduced only where the shape genuinely differs (see the simplification note in ADR-0014).
-- `net.earelin.mercator.infrastructure.*` — driven adapters (BOE HTTP client, document cache,
-  extractors, JDBC persistence). May use **infrastructure-facing Micronaut tooling** where it
-  earns its keep (e.g. config binding, the declarative HTTP client, caching/retry) — but never
-  the driving-side concerns (controllers, the scheduler), which belong to `application`.
-- `net.earelin.mercator.application.*` — the Micronaut driving adapters + wiring: the
-  **read-only** API and the gated historical-import endpoint (REST controllers live under
-  `application.rest`, with admin-only endpoints under `application.rest.admin` — e.g. the import
-  endpoint at `application.rest.admin.imports`), the daily-incremental `@Scheduled` job, and the
-  `@Factory` beans that compose the core/infra objects.
+- `net.earelin.mercator.domain.*` — domain/application core: model, ports, ingestion/normalisation/parsing. Imports no other layer. A domain object **may** carry `@MappedEntity`/`@Serdeable` and serve as the DB entity / API body directly — a separate DTO only where the shape genuinely differs (ADR-0014).
+- `net.earelin.mercator.infrastructure.*` — driven adapters (BOE HTTP client, document cache, extractors, JDBC persistence). May use infrastructure-facing Micronaut tooling (config binding, declarative HTTP client, caching/retry) — never driving-side concerns.
+- `net.earelin.mercator.application.*` — driving adapters + wiring: the **read-only** API and gated import endpoint (`application.rest`; admin-only under `application.rest.admin`, e.g. `application.rest.admin.imports`), the daily `@Scheduled` job, and `@Factory` composition beans.
 
-## Documentation
+Only the dependency *direction* is enforced (domain ← infrastructure ← application).
 
-The authoritative design lives in `docs/` (read before writing code):
+## Code style
 
-- `docs/specs/` — **what** the system does.
-- `docs/features/` — **how** each spec is implemented, plus the implementation-issue backlog.
-- `docs/architecture/` — **why** (Architecture Decision Records). Start at
-  **[`docs/architecture/README.md`](docs/architecture/README.md)** — besides indexing the ADRs it
-  carries a synthesised **current-state architecture overview** (the recommended entry point for the
-  system's shape and the rationale behind it).
+**Comment sparingly.** Let clear names and small methods carry intent. Comment only a non-obvious *why* (rationale, workaround, spec/ADR reference, subtle invariant) — never narrate *what* the code already says, and no section banners, changelog notes, or TODOs. Prefer deleting a stale comment over updating it. Match the surrounding density; when in doubt, fewer.
 
-See **[`docs/CLAUDE.md`](docs/CLAUDE.md)** for how the docs are organised, the doc-authoring
-conventions, and the ADR lifecycle/approval rules.
+## Testing conventions
 
-## Planned tech stack (per the ADRs)
+- **Prefer stubs over mocks.** Assert on observable outcomes / captured state, not interactions via `verify()`. For stateful collaborators use a small hand-written stub that captures state; reserve Mockito for **stubbing** (`when(…).thenReturn(…)`) stateless inputs.
+- **AssertJ** (`assertThat`) for assertions; **assertj-db** for database checks. Test method names are **snake_case**.
+- **Three source sets** (JVM Test Suite plugin):
+  - `src/test` — fast **unit** tests (domain core + pure-logic/in-memory infrastructure). No Docker; run by `test`/`check`.
+  - `src/integration` — tests crossing a **process boundary** only: controllers over Micronaut's embedded server (**REST Assured**), JDBC adapters against real Postgres (Testcontainers), HTTP transport over a socket. Needs Docker; **not** in `check`.
+  - `src/acceptance` — **black-box** tests: build the production image (`dockerBuild`), stand up the full stack (app, Postgres, **WireMock** for BORME/BOE) via Testcontainers' `ComposeContainer`, drive the REST API over the network (**REST Assured**). Never touches production classes — isolated from the Micronaut BOM, declaring its own catalog versions. In neither `check` nor `build`.
+- `check` runs **Checkstyle** (`config/checkstyle/`), **PMD** (`config/pmd/`), **CPD**, **Error Prone**, **NullAway**, and **SpotBugs + Find Security Bugs** — keep all green. NullAway and SpotBugs run on `src/main` only; the `net.earelin.mercator` packages are `@NonNull` by default, so annotate genuinely-nullable components/params/returns with Micronaut's `io.micronaut.core.annotation.@Nullable`. SpotBugs excludes live in `config/spotbugs/exclude.xml` — prefer fixing a finding over widening the filter; keep each entry commented.
 
-For the full rationale and how these pieces fit together, see the architecture overview in
-[`docs/architecture/README.md`](docs/architecture/README.md).
+## Tech stack (per the ADRs)
 
-- **PostgreSQL 18** is the single datastore (`pg_trgm`, `fuzzystrmatch`, `unaccent`). No
-  second datastore initially. See ADR-0004.
-- **Micronaut Data JDBC** (compile-time repositories, HikariCP pool) is the row-by-row
-  database-access layer — `@JdbcRepository` interfaces in `infrastructure.persistence` over
-  `@MappedEntity` **domain objects** (the entity is the domain record, not a parallel row class),
-  with custom `@Query` SQL where conflict/upsert or resolution-function semantics need it, and an
-  `AttributeConverter` for any enum stored as a custom value. Flyway owns the schema
-  (`schema-generate` off, ADR-0016); the bulk historical-import path stays raw SQL/COPY (ADR-0006).
-  No JPA/Hibernate.
-- **Java 25 + Micronaut** single module — the **read-only** API, the daily-incremental job
-  (Micronaut `@Scheduled`), **and** the historical/massive import behind a gated admin endpoint;
-  regex over the per-document XML + ported bormeparser dictionaries, no Python. Micronaut chosen
-  over Spring Boot for low memory/fast startup on a cheap VPS. See ADR-0005.
-- **Java virtual threads** back the blocking work: controllers (and future scheduled/async jobs)
-  doing blocking I/O run on the Micronaut `blocking` executor via `@ExecuteOn(TaskExecutors.BLOCKING)`,
-  which on Java 25 is a virtual-thread-per-task executor automatically. Keeps high concurrency cheap
-  on one small VPS (ADR-0011) without reactive complexity.
-- **Shared ingestion logic** — BOE client, parser, normalisation and the ingestion service live
-  in the `domain`/`infrastructure` packages so resolution/idempotency are defined once and used
-  by both write paths. See ADR-0005/0007.
-- **Gradle 9.5** single-project build (pinned via the wrapper). See ADR-0005.
-- Deployed via Docker on one cheap EU VPS; nightly `pg_dump`. See ADR-0011.
+See [`docs/architecture/README.md`](docs/architecture/README.md) for full rationale.
+
+- **PostgreSQL 18**, single datastore (`pg_trgm`, `fuzzystrmatch`, `unaccent`). ADR-0004.
+- **Micronaut Data JDBC** (compile-time repos, HikariCP) — `@JdbcRepository` interfaces in `infrastructure.persistence` over `@MappedEntity` domain objects, custom `@Query` SQL for upsert/resolution semantics, `AttributeConverter` for custom-valued enums. Flyway owns the schema (`schema-generate` off, ADR-0016); bulk import stays raw SQL/COPY (ADR-0006). No JPA/Hibernate.
+- **Java 25 + Micronaut**, single module — read-only API, daily `@Scheduled` job, and gated historical import. Regex over per-document XML + ported bormeparser dictionaries, no Python. Micronaut over Spring Boot for low memory / fast startup. ADR-0005.
+- **Virtual threads** for blocking work: `@ExecuteOn(TaskExecutors.BLOCKING)` (a virtual-thread-per-task executor on Java 25). High concurrency cheap on one VPS, no reactive complexity. ADR-0011.
+- **Shared ingestion logic** in `domain`/`infrastructure` so resolution/idempotency are defined once across both write paths. ADR-0005/0007.
+- Deployed via Docker on one cheap EU VPS; nightly `pg_dump`. ADR-0011.
