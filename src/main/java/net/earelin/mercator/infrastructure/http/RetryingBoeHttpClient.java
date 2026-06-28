@@ -1,5 +1,6 @@
 package net.earelin.mercator.infrastructure.http;
 
+import io.micronaut.core.annotation.Nullable;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Map;
@@ -113,7 +114,7 @@ public final class RetryingBoeHttpClient implements BoeHttpClient {
     }
 
     /** Returns a give-up {@link HttpFetchResult.Failure} once attempts are exhausted, else null. */
-    private HttpFetchResult giveUpOrNull(int attempt, ErrorKind kind, int status, String detail) {
+    private @Nullable HttpFetchResult giveUpOrNull(int attempt, ErrorKind kind, int status, String detail) {
         if (attempt >= config.maxAttempts()) {
             return new HttpFetchResult.Failure(kind, status, detail);
         }

@@ -1,5 +1,6 @@
 package net.earelin.mercator.domain.source;
 
+import io.micronaut.core.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -76,7 +77,7 @@ final class XmlSupport {
     }
 
     /** The first direct child element named {@code tagName}, or {@code null} if there is none. */
-    static Element firstChildElement(Element parent, String tagName) {
+    static @Nullable Element firstChildElement(Element parent, String tagName) {
         NodeList children = parent.getChildNodes();
         for (int i = 0; i < children.getLength(); i++) {
             Node node = children.item(i);
@@ -88,7 +89,7 @@ final class XmlSupport {
     }
 
     /** The trimmed text of the first {@code tagName} child, or {@code null} if absent/blank. */
-    static String childText(Element parent, String tagName) {
+    static @Nullable String childText(Element parent, String tagName) {
         Element child = firstChildElement(parent, tagName);
         if (child == null) {
             return null;
@@ -98,7 +99,7 @@ final class XmlSupport {
     }
 
     /** Parse {@code value} into a URI, or {@code null} if it is blank or syntactically invalid. */
-    static URI parseUri(String value) {
+    static @Nullable URI parseUri(@Nullable String value) {
         if (value == null || value.isBlank()) {
             return null;
         }

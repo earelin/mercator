@@ -1,5 +1,6 @@
 package net.earelin.mercator.domain.source;
 
+import io.micronaut.core.annotation.Nullable;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.time.LocalDate;
@@ -34,7 +35,7 @@ public final class XmlDocumentParser {
      * @param charset    the charset the body was decoded with
      */
     public record ParsedXml(
-            DocumentMetadata metadata,
+            @Nullable DocumentMetadata metadata,
             List<Paragraph> paragraphs,
             String rawBody,
             Charset charset) {
@@ -92,7 +93,7 @@ public final class XmlDocumentParser {
         return paragraphs;
     }
 
-    private static ParagraphClass paragraphClass(String cssClass) {
+    private static @Nullable ParagraphClass paragraphClass(String cssClass) {
         if (cssClass == null) {
             return null;
         }
@@ -103,7 +104,7 @@ public final class XmlDocumentParser {
         };
     }
 
-    private static Integer parsePages(Element metadatos) {
+    private static @Nullable Integer parsePages(Element metadatos) {
         Integer explicit = parseInt(XmlSupport.childText(metadatos, "numero_paginas"));
         if (explicit != null) {
             return explicit;
@@ -116,7 +117,7 @@ public final class XmlDocumentParser {
         return null;
     }
 
-    private static LocalDate parseDate(String value) {
+    private static @Nullable LocalDate parseDate(@Nullable String value) {
         if (value == null || value.isBlank()) {
             return null;
         }
@@ -135,7 +136,7 @@ public final class XmlDocumentParser {
         }
     }
 
-    private static Integer parseInt(String value) {
+    private static @Nullable Integer parseInt(@Nullable String value) {
         if (value == null || value.isBlank()) {
             return null;
         }

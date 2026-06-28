@@ -18,13 +18,49 @@ the constraints that govern it.
 ./gradlew build          # compile + test
 ./gradlew test           # run the fast unit tests only
 ./gradlew integration    # run the integration tests (controllers + adapters; needs Docker)
+./gradlew acceptance     # build the app image + run the black-box acceptance tests over Docker Compose (needs Docker)
 ./gradlew run            # start the Micronaut server locally
-./gradlew check          # unit test + Checkstyle + CPD (no Docker; excludes integration)
+./gradlew check          # unit test + Checkstyle + PMD + CPD + Error Prone/NullAway + SpotBugs/FindSecBugs (no Docker; excludes integration)
 ```
 
 The database must be running (`docker compose up -d`) before starting the server. The
 `integration` suite stands up its own Postgres via Testcontainers, so the Docker daemon must be
 available when running it.
+
+## Scripts
+
+Two helper scripts live in `scripts/` (run from anywhere — they `cd` to the repo root):
+
+- `scripts/ci.sh` — the **local CI pipeline**, also wired as a git pre-push hook (see
+  `.githooks/pre-push`; enable with `git config core.hooksPath .githooks`). It statically checks
+  every Markdown file (markdownlint-cli2 formatting, lychee internal + external links/anchors,
+  `mmdc` Mermaid syntax), lints Docker Compose files (`dclint` via `npx`), runs `./gradlew check`
+  and `./gradlew build`, lints the Flyway SQL (`sqlfluff` over `src/main/resources/db/migration`),
+  validates the OpenAPI contract for structure + security (`spectral` with `spectral:oas` +
+  the OWASP ruleset over `docs/specs/api.openapi.yaml`), and runs a **SAST security scan**
+  (`opengrep`, the open-source Semgrep fork) over the production sources `src/main` with the
+  Semgrep-compatible `p/java` + `p/secrets` + `p/security-audit` rulesets — scoped to `src/main`
+  like SpotBugs, since test fixtures legitimately do "unsafe" things. Finally it lints the GitHub
+  Actions workflows (`actionlint`, which also shellchecks the `run:` scripts when `shellcheck` is on
+  PATH). Skip external link checks with `CHECK_EXTERNAL=0`. Requires markdownlint-cli2, lychee, mmdc
+  (+ a system Chrome/Chromium), npx, sqlfluff, opengrep, and actionlint installed locally (the
+  opengrep ruleset fetch needs network on first run, then caches).
+- `scripts/api-conformance.sh` — the heavyweight **dynamic** API check, deliberately kept out of
+  `ci.sh`. It drives a *running* server with property-based cases generated from the OpenAPI doc
+  (`schemathesis`) and asserts responses conform — drift (status code / schema / content type /
+  headers) and security (malformed-input rejection, admin-endpoint auth enforcement per ADR-0013).
+  Needs a reachable server (`./gradlew run` first); configure via `MERCATOR_BASE_URL` (default
+  `http://localhost:8080`), `MERCATOR_API_KEY` (sent as `X-API-Key`), and
+  `SCHEMATHESIS_MAX_EXAMPLES` (default 25 per operation). Requires `schemathesis` (`st`) installed.
+
+## Code style
+
+- **Comment sparingly.** Write self-explanatory code (clear names, small methods) and let it carry
+  the intent. Add a comment only when it earns its place: a non-obvious *why* (a rationale, a
+  workaround, a spec/ADR reference, a subtle invariant). Do **not** narrate *what* the code already
+  says, restate the method or field name, or leave section-divider banners, changelog notes, or
+  TODOs-as-documentation. Prefer deleting a stale comment over updating it. Match the comment density
+  of the surrounding code — when in doubt, fewer.
 
 ## Testing conventions
 
@@ -36,15 +72,35 @@ available when running it.
 - **AssertJ** (`assertThat`) for assertions, not native JUnit assertions; **assertj-db** for
   database-backed checks.
 - Test method names are **snake_case**.
-- **Two source sets (JVM Test Suite plugin).** `src/test` holds the fast **unit** tests (the
+- **Three source sets (JVM Test Suite plugin).** `src/test` holds the fast **unit** tests (the
   `domain` core plus the pure-logic/in-memory `infrastructure` ones) — no Docker, run by
   `./gradlew test`/`check`. `src/integration` holds the **integration** tests that cross a process
   boundary: the controllers over Micronaut's embedded HTTP server (driven with **REST Assured**),
   the JDBC adapters against a real Postgres (Testcontainers), and the HTTP transport over a socket.
   Run them with `./gradlew integration` (needs Docker); they are deliberately **not** part of
-  `check`.
-- `./gradlew check` runs Checkstyle (shared config in `config/checkstyle/`) and CPD
-  (duplication); keep both green.
+  `check`. `src/acceptance` holds the **black-box acceptance** tests: they build the production
+  Docker image (via `dockerBuild`, its default `<project>:latest` tag), stand up the full stack (the
+  app image, a Postgres, and a **WireMock** simulating the external BORME/BOE HTTP services) with **Docker
+  Compose** through Testcontainers' `ComposeContainer` (the project's `docker-compose.yml`, app behind
+  the `app` compose profile; WireMock stubs under `docker/acceptance/wiremock`), and drive the
+  running container's REST API over the network with **REST Assured**. Unlike `integration` they never touch
+  the production classes — the app is opaque, reached only over HTTP — so the suite is **isolated
+  from the Micronaut platform BOM** (it declares its own REST Assured/Testcontainers versions from
+  the catalog). Run them with `./gradlew acceptance` (needs Docker + a built image); the test task is
+  wired into **neither `check` nor `build`**.
+- `./gradlew check` runs Checkstyle (shared config in `config/checkstyle/`), PMD (curated ruleset
+  in `config/pmd/`) and CPD (duplication); keep all three green. It also compiles with **Error Prone**
+  (javac bug-pattern checks) and **NullAway** (nullness analysis, configured inline in
+  `build.gradle.kts`): NullAway runs on the production `main` sources only, treats the
+  `net.earelin.mercator` packages as `@NonNull` by default, and fails the build on an unannotated
+  nullable dereference — annotate genuinely-nullable record components, params and returns with the
+  Micronaut `io.micronaut.core.annotation.@Nullable` already used across the codebase.
+- `./gradlew check` also runs **SpotBugs** with the **Find Security Bugs** detector pack (bytecode
+  analysis: bugs + security patterns like injection, weak crypto, SSRF, XXE). Like NullAway it runs
+  on the production `main` sources only (test/integration fixtures trip the security detectors with
+  deliberately "unsafe" code). The exclude filter lives in `config/spotbugs/exclude.xml` — it drops
+  Micronaut's generated classes plus a few scoped, justified false positives / accepted trade-offs;
+  prefer fixing a finding over widening the filter, and keep each filter entry commented.
 
 ## What Mercator is
 
@@ -83,12 +139,18 @@ The authoritative design lives in `docs/` (read before writing code):
 
 - `docs/specs/` — **what** the system does.
 - `docs/features/` — **how** each spec is implemented, plus the implementation-issue backlog.
-- `docs/architecture/` — **why** (Architecture Decision Records).
+- `docs/architecture/` — **why** (Architecture Decision Records). Start at
+  **[`docs/architecture/README.md`](docs/architecture/README.md)** — besides indexing the ADRs it
+  carries a synthesised **current-state architecture overview** (the recommended entry point for the
+  system's shape and the rationale behind it).
 
 See **[`docs/CLAUDE.md`](docs/CLAUDE.md)** for how the docs are organised, the doc-authoring
 conventions, and the ADR lifecycle/approval rules.
 
 ## Planned tech stack (per the ADRs)
+
+For the full rationale and how these pieces fit together, see the architecture overview in
+[`docs/architecture/README.md`](docs/architecture/README.md).
 
 - **PostgreSQL 18** is the single datastore (`pg_trgm`, `fuzzystrmatch`, `unaccent`). No
   second datastore initially. See ADR-0004.

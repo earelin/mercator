@@ -50,10 +50,14 @@ public class HistoricalImportController {
 
     @Post("/by-date")
     public HttpResponse<?> importByDate(@Body ImportByDateRequest request) {
+        String raw = request.date();
+        if (raw == null) {
+            return badRequest("date must be an ISO date (YYYY-MM-DD)");
+        }
         final LocalDate date;
         try {
-            date = LocalDate.parse(request.date());
-        } catch (DateTimeParseException | NullPointerException e) {
+            date = LocalDate.parse(raw);
+        } catch (DateTimeParseException e) {
             return badRequest("date must be an ISO date (YYYY-MM-DD)");
         }
         return accepted(ingestionService.importByDate(date));
@@ -61,10 +65,14 @@ public class HistoricalImportController {
 
     @Post("/by-month")
     public HttpResponse<?> importByMonth(@Body ImportByMonthRequest request) {
+        String raw = request.month();
+        if (raw == null) {
+            return badRequest("month must be an ISO year-month (YYYY-MM)");
+        }
         final YearMonth month;
         try {
-            month = YearMonth.parse(request.month());
-        } catch (DateTimeParseException | NullPointerException e) {
+            month = YearMonth.parse(raw);
+        } catch (DateTimeParseException e) {
             return badRequest("month must be an ISO year-month (YYYY-MM)");
         }
         return accepted(ingestionService.importByMonth(month));

@@ -148,9 +148,9 @@ class SummaryEnumerationServiceTest {
     private static byte[] summaryWith(String... identifiers) {
         StringBuilder items = new StringBuilder();
         for (String id : identifiers) {
-            items.append("<item><identificador>").append(id).append("</identificador>")
-                    .append("<titulo>").append(id).append("</titulo>")
-                    .append("<url_xml>https://www.boe.es/diario_borme/xml.php?id=").append(id)
+            items.append("<item><identificador>").append(id)
+                    .append("</identificador><titulo>").append(id)
+                    .append("</titulo><url_xml>https://www.boe.es/diario_borme/xml.php?id=").append(id)
                     .append("</url_xml></item>");
         }
         String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"

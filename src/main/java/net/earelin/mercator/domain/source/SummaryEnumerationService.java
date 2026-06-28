@@ -90,7 +90,8 @@ public final class SummaryEnumerationService implements SummarySource {
             return new SummaryResult.Published(date, documents);
         } catch (XmlParseException e) {
             LOG.warn("malformed summary XML for {}: {}", date, e.getMessage());
-            return new SummaryResult.Failed(date, new FetchError(ErrorKind.PERMANENT, e.getMessage()));
+            return new SummaryResult.Failed(
+                    date, new FetchError(ErrorKind.PERMANENT, "malformed summary XML: " + e.getMessage()));
         }
     }
 

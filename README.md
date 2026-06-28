@@ -18,10 +18,6 @@ Start with [`docs/specs/`](docs/specs/README.md) for *what* the system does,
 [`docs/features/`](docs/features/README.md) for *how*, and
 [`docs/architecture/`](docs/architecture/README.md) for *why*.
 
-> Early implementation: the document-fetch/parse/persistence layers and the full Flyway schema
-> exist; the ingestion service, resolution functions, read API and the historical-import engine
-> are still to be built (the import endpoint is scaffolded).
-
 ## Development
 
 `script/ci.sh` is the local CI pipeline. It checks every Markdown file for formatting,

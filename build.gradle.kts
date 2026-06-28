@@ -1,4 +1,8 @@
+import com.github.spotbugs.snom.Confidence
+import com.github.spotbugs.snom.Effort
 import de.aaschmid.gradle.plugins.cpd.Cpd
+import net.ltgt.gradle.errorprone.CheckSeverity
+import net.ltgt.gradle.errorprone.errorprone
 
 plugins {
     // The Micronaut application: read-only API, the daily-incremental scheduler, and the gated
@@ -6,7 +10,12 @@ plugins {
     alias(libs.plugins.micronaut.application)
     // CPD (PMD's copy/paste detector) for code-duplication checking.
     alias(libs.plugins.cpd)
+    // Error Prone (javac bug-pattern checks) — also the host for NullAway's nullness analysis.
+    alias(libs.plugins.errorprone)
+    // SpotBugs (bytecode bug-pattern analysis) — hosts the Find Security Bugs detector pack.
+    alias(libs.plugins.spotbugs)
     checkstyle
+    pmd
 }
 
 group = "net.earelin.mercator"
@@ -36,28 +45,29 @@ application {
 }
 
 dependencies {
-    // Domain/infrastructure libraries (formerly the `shared` module). slf4j is plain
-    // `implementation` now that there is no external library consumer; jsoup/PDFBox back the
-    // document-fetch fallbacks (txt.php HTML, last-resort PDF — ADR-0002, ADR-0012).
+    annotationProcessor("io.micronaut.data:micronaut-data-processor")
+
+    // Error Prone compiler plugin + NullAway nullness checker. The gradle-errorprone-plugin wires
+    // the `errorprone` configuration onto every JavaCompile task's processor path.
+    errorprone(libs.errorprone.core)
+    errorprone(libs.nullaway)
+
+    // Find Security Bugs — a SpotBugs detector pack adding security bug patterns (injection, weak
+    // crypto, SSRF, path traversal…). Loaded into SpotBugs via the `spotbugsPlugins` configuration.
+    spotbugsPlugins(libs.findsecbugs.plugin)
+
     implementation(libs.slf4j.api)
     implementation(libs.jsoup)
     implementation(libs.pdfbox)
-    // Vendor-neutral JSR-330 DI annotations (@Singleton/@Inject) for the domain core — depended on
-    // directly so the core compiles against the standard, not transitively via Micronaut
-    // (ADR-0014). Micronaut supplies the implementation that reads them at the boundary.
     implementation(libs.jakarta.inject.api)
 
-    // Micronaut runtime: HTTP API, JSON serialization, Flyway migrations, JDBC/HikariCP.
+    // Micronaut runtime
     implementation("io.micronaut:micronaut-http-server-netty")
     implementation("io.micronaut.serde:micronaut-serde-jackson")
     implementation("io.micronaut.flyway:micronaut-flyway")
     implementation("io.micronaut.sql:micronaut-jdbc-hikari")
-    // Micronaut Data JDBC backs the row-by-row database access (the borme_log adapter today; the
-    // resolution-function calls and daily upserts next). Repositories are compiled ahead-of-time by
-    // micronaut-data-processor — no reflection/runtime proxies. Flyway still owns the schema
-    // (schema-generate is off); the bulk historical-import path stays raw SQL/COPY (ADR-0006).
     implementation("io.micronaut.data:micronaut-data-jdbc")
-    annotationProcessor("io.micronaut.data:micronaut-data-processor")
+
     runtimeOnly(libs.logback.classic)
     runtimeOnly(libs.postgresql)
     runtimeOnly(libs.flyway.core)
@@ -68,19 +78,14 @@ dependencies {
     testImplementation("io.micronaut:micronaut-http-client")
     testImplementation(libs.assertj.core)
     testImplementation(libs.mockito.core)
-    // assertj-db is the standard for database-backed checks (persistence/borme_log tests).
     testImplementation(libs.assertj.db)
-    // ArchUnit enforces the hexagonal layer boundaries (domain / infrastructure / application)
-    // as a plain JUnit test — see LayeredArchitectureTest (ADR-0014).
     testImplementation(libs.archunit)
-    // Testcontainers stands up a real Postgres 18 so the JDBC adapters are exercised against the
-    // actual ON CONFLICT upsert and CHECK constraints. The canonical schema lives in this module
-    // (src/main/resources/db/migration); the tests apply it with Flyway — one source of truth.
     testImplementation(libs.testcontainers.postgresql)
     testImplementation(libs.testcontainers.junit)
     testImplementation(libs.flyway.core)
     testImplementation(libs.flyway.postgresql)
     testImplementation(libs.postgresql)
+
     testRuntimeOnly(libs.junit.platform.launcher)
     testRuntimeOnly(libs.logback.classic)
 }
@@ -110,6 +115,31 @@ testing {
                 // Only orders the two when both are asked for in one invocation; `check` runs
                 // neither integration nor this ordering edge.
                 testTask.configure { shouldRunAfter(tasks.named("test")) }
+            }
+        }
+
+        // Black-box end-to-end tests (src/acceptance/java): build the production image and drive it
+        // over HTTP via Docker Compose + Testcontainers, never touching the production classes. Wired
+        // into neither `check` nor `build`; run on demand (needs Docker) with `./gradlew acceptance`.
+        val acceptance by registering(JvmTestSuite::class) {
+            useJUnitJupiter(libs.versions.junit.jupiter)
+            dependencies {
+                // Deliberately NOT extending the `test` configurations (unlike `integration`): that
+                // pulls in the Micronaut platform BOM, which force-upgrades testcontainers/rest-assured
+                // past the catalog pins. Micronaut-free keeps the suite isolated and the pins holding.
+                implementation(libs.assertj.core)
+                implementation(libs.rest.assured)
+                implementation(libs.testcontainers)
+                runtimeOnly(libs.logback.classic)
+            }
+            targets.configureEach {
+                testTask.configure {
+                    dependsOn(tasks.named("dockerBuild"))
+                    shouldRunAfter(tasks.named("test"), tasks.named("integration"))
+                    // Pull exactly the image `dockerBuild` produced (its default `<project>:latest`)
+                    // without repurposing that global default tag; forwarded to Compose as MERCATOR_IMAGE.
+                    systemProperty("mercator.acceptance.image", "${project.name}:latest")
+                }
             }
         }
     }
@@ -142,6 +172,66 @@ cpd {
 tasks.named<Cpd>("cpdCheck") {
     minimumTokenCount = 100
     ignoreFailures = false
+}
+
+// PMD source analysis. Runs as part of `check` (pmdMain + pmdTest, incl. the integration source
+// set). The curated ruleset lives in config/pmd; the bundled category rulesets are disabled so only
+// the rules we opt into apply.
+pmd {
+    toolVersion = libs.versions.pmd.get()
+    ruleSetConfig = resources.text.fromFile(rootProject.layout.projectDirectory.file("config/pmd/ruleset.xml"))
+    ruleSets = emptyList()
+    isConsoleOutput = true
+    isIgnoreFailures = false
+}
+
+// Error Prone runs inside javac on every compile task (main, test and integration), keeping its
+// default bug-pattern severities — real-bug patterns already fail the build, advisory ones stay
+// warnings. Micronaut's annotation-processor output is excluded so generated beans/introspections
+// aren't analysed.
+//
+// NullAway is promoted to an error and scoped to our own packages, so an unannotated nullable
+// dereference becomes a compile failure; it recognises the Micronaut `@Nullable`/`@NonNull` already
+// used in the codebase by simple name. It runs on the production (`main`) sources only: NullAway
+// models production nullness contracts, whereas tests deliberately pass/handle null and lean on
+// AssertJ's `isNotNull()`, which NullAway does not treat as a narrowing check.
+tasks.withType<JavaCompile>().configureEach {
+    options.errorprone {
+        disableWarningsInGeneratedCode = true
+        excludedPaths = ".*/build/generated/.*"
+        if (name == "compileJava") {
+            check("NullAway", CheckSeverity.ERROR)
+            option("NullAway:AnnotatedPackages", "net.earelin.mercator")
+        } else {
+            check("NullAway", CheckSeverity.OFF)
+        }
+    }
+}
+
+// SpotBugs analyses compiled bytecode for bug patterns; the Find Security Bugs pack (wired via the
+// `spotbugsPlugins` configuration above) adds security detectors (injection, weak crypto, SSRF,
+// path traversal…). MAX effort for the most thorough analysis, MEDIUM confidence to drop
+// low-confidence noise. The exclude filter skips Micronaut's annotation-processor output (generated
+// beans/introspections) and a few scoped false positives / deliberate trade-offs.
+//
+// It runs on the production (`main`) sources only (see the task-disabling below): Find Security Bugs
+// models the deployed attack surface, whereas test/integration fixtures legitimately do "unsafe"
+// things (dynamic SQL to exercise DB constraints, throwaway credentials…) that are pure noise here —
+// the same main-only reasoning as NullAway.
+spotbugs {
+    toolVersion = libs.versions.spotbugs.tool.get()
+    effort = Effort.MAX
+    reportLevel = Confidence.MEDIUM
+    excludeFilter = rootProject.layout.projectDirectory.file("config/spotbugs/exclude.xml")
+    ignoreFailures = false
+}
+
+tasks.withType<com.github.spotbugs.snom.SpotBugsTask>().configureEach {
+    // Only analyse production bytecode; skip the per-test-source-set tasks (spotbugsTest, etc.).
+    enabled = name == "spotbugsMain"
+    // HTML for humans; SARIF for CI to upload to GitHub Code Scanning (one category per tool).
+    reports.create("html") { required = true }
+    reports.create("sarif") { required = true }
 }
 
 tasks.withType<Test> {

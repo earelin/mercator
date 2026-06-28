@@ -19,6 +19,13 @@ out/
 .vscode/
 *.code-workspace
 
+# ---- Eclipse / JDT-LS ----
+bin/
+.classpath
+.factorypath
+.project
+.settings/
+
 # ---- Docs CI ----
 .lycheecache
 .mermaid/tmp/

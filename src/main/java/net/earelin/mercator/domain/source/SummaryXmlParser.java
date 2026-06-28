@@ -1,5 +1,6 @@
 package net.earelin.mercator.domain.source;
 
+import io.micronaut.core.annotation.Nullable;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -71,7 +72,7 @@ public final class SummaryXmlParser {
     }
 
     /** Build a descriptor from one {@code <item>}, or {@code null} if it has no usable identifier. */
-    private DocumentDescriptor toDescriptor(Element item) {
+    private @Nullable DocumentDescriptor toDescriptor(Element item) {
         String identificador = XmlSupport.childText(item, "identificador");
         if (identificador == null) {
             return null;

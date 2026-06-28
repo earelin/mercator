@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import net.earelin.mercator.domain.source.CachedDocument;
 import net.earelin.mercator.domain.source.DocumentCache;
@@ -75,7 +76,9 @@ public final class DiskDocumentCache implements DocumentCache {
     }
 
     private void writeAtomic(Path target, byte[] bytes) throws IOException {
-        Path tmp = Files.createTempFile(target.getParent(), "tmp-", ".part");
+        // target is always a resolved entry path under the cache root, so it has a parent dir.
+        Path dir = Objects.requireNonNull(target.getParent(), "cache entry path must have a parent");
+        Path tmp = Files.createTempFile(dir, "tmp-", ".part");
         try {
             Files.write(tmp, bytes);
             try {
