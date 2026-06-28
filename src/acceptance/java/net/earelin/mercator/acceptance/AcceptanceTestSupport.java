@@ -9,16 +9,13 @@ import org.testcontainers.containers.ComposeContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
 /**
- * Base for the black-box acceptance tests. It boots the full application stack — the production
- * Docker image (built by {@code ./gradlew dockerBuild} and passed in via the {@code
- * mercator.acceptance.image} system property), a Postgres, and a WireMock standing in for the
- * external BORME/BOE services — once for the whole suite via Docker Compose ({@code
- * docker/acceptance/compose.yaml}), then points REST Assured at the running app container. The
- * application is treated as opaque: tests reach it only over HTTP, never through its classes.
+ * Base for the black-box acceptance tests: boots the full stack — the production image (built by
+ * {@code dockerBuild}, passed in via the {@code mercator.acceptance.image} system property), a
+ * Postgres, and a WireMock for the external BORME/BOE services — once for the suite via Docker
+ * Compose, then points REST Assured at the app container. The app is opaque, reached only over HTTP.
  *
- * <p>The stack is a Testcontainers <em>singleton container</em>: started on first class load and left
- * to Testcontainers' Ryuk reaper to tear down at JVM exit, so every acceptance test class shares the
- * one boot rather than paying the container-startup cost per class.
+ * <p>Singleton-container pattern: started on first class load, reaped by Ryuk at JVM exit, so every
+ * acceptance class shares the one boot.
  */
 abstract class AcceptanceTestSupport {
 
@@ -27,21 +24,13 @@ abstract class AcceptanceTestSupport {
 
     private static final ComposeContainer ENVIRONMENT =
             new ComposeContainer(new File("docker/acceptance/compose.yaml"))
-                    // Use the host Docker daemon so the locally built application image is visible;
-                    // the default containerised compose runs in an isolated daemon that cannot see it.
+                    // Host daemon, not the containerised default, so the locally built image is visible.
                     .withLocalCompose(true)
-                    // Activate the `app` compose profile so the application image is launched
-                    // alongside its backing services (the others are profile-less and always start).
+                    // The app image is gated behind the `app` profile; the backing services always start.
                     .withEnv("COMPOSE_PROFILES", "app")
-                    // Point Compose at the exact image `dockerBuild` produced (its default
-                    // `<project>:latest` tag, passed in by the Gradle test task). The compose file
-                    // requires MERCATOR_IMAGE, so a run outside Gradle must set it (system property or
-                    // env) — there is no implicit default image.
                     .withEnv(appImageEnv())
-                    // Generic liveness/routing probe — NOT proof the import endpoint is mounted: once
-                    // Micronaut is up it returns 404 for any unmatched path, so this only confirms the
-                    // server is serving (connection-refused while it boots keeps the strategy polling).
-                    // The POST tests are what actually assert the gated route is present.
+                    // Liveness/routing probe only: once up, Micronaut 404s any unmatched path. The POST
+                    // tests are what assert the gated route is actually present.
                     .withExposedService(
                             APP_SERVICE,
                             APP_PORT,
@@ -50,8 +39,8 @@ abstract class AcceptanceTestSupport {
                                     .withStartupTimeout(Duration.ofMinutes(4)));
 
     /**
-     * Maps {@code MERCATOR_IMAGE} to the image tag Gradle built, or an empty map when the system
-     * property is absent (a run outside Gradle, which must then supply MERCATOR_IMAGE itself).
+     * {@code MERCATOR_IMAGE} bound to the image tag Gradle built, or empty when the system property is
+     * absent — the compose file requires the variable, so a run outside Gradle must supply it.
      */
     private static Map<String, String> appImageEnv() {
         String image = System.getProperty("mercator.acceptance.image");

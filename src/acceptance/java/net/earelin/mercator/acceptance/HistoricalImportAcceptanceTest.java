@@ -8,11 +8,9 @@ import io.restassured.response.Response;
 import org.junit.jupiter.api.Test;
 
 /**
- * End-to-end acceptance test of the historical-import admin endpoint against the deployed Docker
- * image. Unlike the integration tests (which run the controller over an embedded server with an
- * in-memory job store), this drives the real container — wired to a real Postgres and started with
- * the {@code prod} profile and the import gate enabled — over the network. Exercising it proves the
- * image builds, starts, connects to the database, applies the Flyway migrations and serves the API.
+ * End-to-end acceptance test of the import admin endpoint against the deployed image: drives the real
+ * container (real Postgres, {@code prod} profile, import gate on) over the network — proving the image
+ * builds, starts, migrates and serves the API — where the integration tests use an embedded server.
  */
 class HistoricalImportAcceptanceTest extends AcceptanceTestSupport {
 
@@ -22,9 +20,8 @@ class HistoricalImportAcceptanceTest extends AcceptanceTestSupport {
 
         assertThat(accepted.statusCode()).isEqualTo(202);
 
-        // Acceptance level: smoke the happy path end-to-end — the deployed container accepts the
-        // request and hands back a pollable status URL that then answers. The exact response-body
-        // contract (jobId/kind/target shapes) is asserted by the integration + conformance suites.
+        // Acceptance altitude: smoke that a request is accepted and the status URL then answers; the
+        // exact response-body contract is covered by the integration + conformance suites.
         String statusUrl = accepted.jsonPath().getString("statusUrl");
         assertThat(statusUrl).startsWith("/admin/imports/");
 
@@ -57,7 +54,6 @@ class HistoricalImportAcceptanceTest extends AcceptanceTestSupport {
         assertThat(response.statusCode()).isEqualTo(404);
     }
 
-    /** POSTs a JSON body to an import endpoint and returns the raw response for assertion. */
     private static Response postImport(String path, String jsonBody) {
         return given()
                 .contentType(ContentType.JSON)

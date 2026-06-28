@@ -79,8 +79,8 @@ Two helper scripts live in `scripts/` (run from anywhere — they `cd` to the re
   the JDBC adapters against a real Postgres (Testcontainers), and the HTTP transport over a socket.
   Run them with `./gradlew integration` (needs Docker); they are deliberately **not** part of
   `check`. `src/acceptance` holds the **black-box acceptance** tests: they build the production
-  Docker image (`mercator:acceptance`, via `dockerBuild`), stand up the full stack (the app image, a
-  Postgres, and a **WireMock** simulating the external BORME/BOE HTTP services) with **Docker
+  Docker image (via `dockerBuild`, its default `<project>:latest` tag), stand up the full stack (the
+  app image, a Postgres, and a **WireMock** simulating the external BORME/BOE HTTP services) with **Docker
   Compose** through Testcontainers' `ComposeContainer` (`docker/acceptance/compose.yaml`, app behind
   the `app` compose profile; WireMock stubs under `docker/acceptance/wiremock`), and drive the
   running container's REST API over the network with **REST Assured**. Unlike `integration` they never touch

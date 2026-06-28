@@ -115,22 +115,15 @@ testing {
             }
         }
 
-        // A separate `acceptance` source set (src/acceptance/java) holds the black-box end-to-end
-        // tests: they build the production Docker image, stand up the whole stack (the app image +
-        // a Postgres) with Docker Compose via Testcontainers, and drive the running container's
-        // REST API over the network with REST Assured. Unlike `integration` these do NOT touch the
-        // production classes — the application is opaque, exercised only through HTTP. The suite is
-        // wired into neither `check` nor `build`; it needs Docker (the daemon plus a freshly built
-        // image) and is run on demand with `./gradlew acceptance`.
+        // Black-box end-to-end tests (src/acceptance/java): build the production image and drive it
+        // over HTTP via Docker Compose + Testcontainers, never touching the production classes. Wired
+        // into neither `check` nor `build`; run on demand (needs Docker) with `./gradlew acceptance`.
         val acceptance by registering(JvmTestSuite::class) {
             useJUnitJupiter(libs.versions.junit.jupiter)
             dependencies {
-                // Self-contained black-box deps: REST Assured drives the container's HTTP API,
-                // Testcontainers' Compose module owns the stack lifecycle, AssertJ for assertions.
                 // Deliberately NOT extending the `test` configurations (unlike `integration`): that
-                // would pull in the Micronaut platform BOM, which force-upgrades testcontainers and
-                // rest-assured past the versions pinned in the catalog. The acceptance suite has no
-                // Micronaut on its classpath, so it stays isolated and the pinned versions hold.
+                // pulls in the Micronaut platform BOM, which force-upgrades testcontainers/rest-assured
+                // past the catalog pins. Micronaut-free keeps the suite isolated and the pins holding.
                 implementation(libs.assertj.core)
                 implementation(libs.rest.assured)
                 implementation(libs.testcontainers)
@@ -138,12 +131,10 @@ testing {
             }
             targets.configureEach {
                 testTask.configure {
-                    // The stack runs the production image, so build it before the tests boot Compose.
                     dependsOn(tasks.named("dockerBuild"))
                     shouldRunAfter(tasks.named("test"), tasks.named("integration"))
-                    // Hand the tests the tag `dockerBuild` produced (its default, `<project>:latest`)
-                    // so the Compose stack pulls exactly that image — without repurposing the global
-                    // default tag. The test forwards this to Compose as MERCATOR_IMAGE.
+                    // Pull exactly the image `dockerBuild` produced (its default `<project>:latest`)
+                    // without repurposing that global default tag; forwarded to Compose as MERCATOR_IMAGE.
                     systemProperty("mercator.acceptance.image", "${project.name}:latest")
                 }
             }
