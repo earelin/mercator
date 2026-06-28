@@ -19,7 +19,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Offline stand-in for the external BORME/BOE services.
   wiremock:
     image: wiremock/wiremock:3.13.2
     command: [ "--verbose", "--disable-banner" ]
@@ -28,7 +27,6 @@ services:
     ports:
       - '127.0.0.1:${WIREMOCK_PORT:-8090}:8080'
 
-  # Gated behind the `app` profile so a dev `docker compose up` starts only the backing services.
   app:
     image: ${MERCATOR_IMAGE:-mercator:latest}
     profiles: [app]
