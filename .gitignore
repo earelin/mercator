@@ -22,6 +22,7 @@ out/
 # ---- Eclipse / JDT-LS ----
 bin/
 .classpath
+.factorypath
 .project
 .settings/
 
