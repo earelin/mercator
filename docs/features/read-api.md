@@ -111,6 +111,6 @@ flowchart LR
 - [ ] OpenAPI spec + API docs (document the `X-API-Key` requirement and the error/pagination shapes).
 - [ ] Contract conformance + security tests: Schemathesis against the running app
       (drift + `ignored_auth`/`negative_data_rejection`), in a dedicated heavyweight script
-      [`script/api-conformance.sh`](../../script/api-conformance.sh) (kept out of
-      [`script/ci.sh`](../../script/ci.sh)); a GitHub job that boots the app + Postgres service
+      [`script/api-conformance.sh`](../../scripts/api-conformance.sh) (kept out of
+      [`script/ci.sh`](../../scripts/ci.sh)); a GitHub job that boots the app + Postgres service
       runs it separately from the main CI pipeline.
