@@ -1,9 +1,9 @@
 -- Seed the full bormeparser cargo (appointment-role) vocabulary into role.
 -- The V1.0.0 baseline seeded the 16 documented canonical roles; this additive migration
--- adds the remaining 369 cargo codes ported from bormeparser's cargo.py (GPLv3, Pablo
+-- adds the remaining cargo codes ported from bormeparser's cargo.py (GPLv3, Pablo
 -- Castellano; ADR-0012), so appointment.role can reference any cargo the parser
--- canonicalises onto net.earelin.mercator.domain.parse.Cargo. See
--- docs/specs/03-extraction.md §Roles.
+-- canonicalises onto net.earelin.mercator.domain.parse.Cargo. Ordinal families (Vocal 1,
+-- Vocal 2…) are collapsed to a single base. See docs/specs/03-extraction.md §Roles.
 INSERT INTO role (code, description) VALUES
     ('ADJ_GERENCIA', 'Adj. Gerencia'),
     ('ADMINISTRADOR', 'Administrador'),
@@ -294,7 +294,6 @@ INSERT INTO role (code, description) VALUES
     ('SUBDIRECTOR', 'Subdirector'),
     ('SUBDIRECTOR_GENERAL', 'Subdirector general'),
     ('SUPLENTE', 'Suplente'),
-    ('SUPLENTE_3_CONSEJO_RECTOR', 'Suplente 3 del consejo rector'),
     ('SUPLENTE_COMISION_ACREEDORES', 'Suplente de la comisión de acreedores'),
     ('SUPLENTE_COMISION_CONTROL', 'Suplente de la comisión de control'),
     ('SUPLENTE_COMISION_CT', 'Suplente de la comisión CT'),
@@ -354,20 +353,8 @@ INSERT INTO role (code, description) VALUES
     ('VICETESORERO', 'Vicetesorero'),
     ('VICETESORERO_JUNTA_DIRECTIVA', 'Vicetesorero de la Junta Directiva'),
     ('VOCAL', 'Vocal'),
-    ('VOCAL_1', 'Vocal 1'),
-    ('VOCAL_10_CONSEJO_RECTOR', 'Vocal 10 del consejo rector'),
-    ('VOCAL_10_JUNTA_DIRECTIVA', 'Vocal 10 de la Junta Directiva'),
-    ('VOCAL_2', 'Vocal 2'),
-    ('VOCAL_2_JUNTA_DIRECTIVA', 'Vocal 2 de la Junta Directiva'),
-    ('VOCAL_3_CONSEJO_RECTOR', 'Vocal 3 del consejo rector'),
-    ('VOCAL_3_JUNTA_DIRECTIVA', 'Vocal 3 de la Junta Directiva'),
-    ('VOCAL_4_CONSEJO_RECTOR', 'Vocal 4 del consejo rector'),
-    ('VOCAL_4_JUNTA_DIRECTIVA', 'Vocal 4 de la Junta Directiva'),
-    ('VOCAL_6_CONSEJO_RECTOR', 'Vocal 6 del consejo rector'),
-    ('VOCAL_6_JUNTA_DIRECTIVA', 'Vocal 6 de la Junta Directiva'),
-    ('VOCAL_7_JUNTA_DIRECTIVA', 'Vocal 7 de la Junta Directiva'),
-    ('VOCAL_8_CONSEJO_RECTOR', 'Vocal 8 del consejo rector'),
     ('VOCAL_COMIT_AUD', 'Vocal Comit. Aud.'),
+    ('VOCAL_CONSEJO_RECTOR', 'Vocal del consejo rector'),
     ('VOCAL_E_P_JUNTA_DIRECTIVA', 'Vocal E.P. Junta Directiva'),
     ('VOCAL_JUNTA_DIRECTIVA', 'Vocal de la Junta Directiva'),
     ('VOCAL_JUNTA_RECTORA', 'Vocal de la Junta Rectora'),

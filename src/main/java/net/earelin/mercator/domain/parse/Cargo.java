@@ -3,7 +3,8 @@ package net.earelin.mercator.domain.parse;
 /**
  * Canonical cargo (appointment-role) vocabulary. Each value's {@link #name()} is the
  * {@code role.code} stored in {@code appointment.role}; the 16 codes seeded by the V1.0.0
- * baseline keep their original spelling, the remainder are added by V1.1.0.
+ * baseline keep their original spelling, the remainder are added by V1.1.0. Ordinal families
+ * (Vocal 1, Vocal 2…) collapse to a single base ({@code VOCAL}).
  *
  * <p>Ported from bormeparser (GPLv3, &copy; Pablo Castellano) &mdash; {@code cargo.py};
  * see ADR-0012 and docs/specs/03-extraction.md &sect;Roles.
@@ -315,7 +316,6 @@ public enum Cargo {
     SUBDIRECTOR,
     SUBDIRECTOR_GENERAL,
     SUPLENTE,
-    SUPLENTE_3_CONSEJO_RECTOR,
     SUPLENTE_COMISION_ACREEDORES,
     SUPLENTE_COMISION_CONTROL,
     SUPLENTE_COMISION_CT,
@@ -375,20 +375,8 @@ public enum Cargo {
     VICETESORERO,
     VICETESORERO_JUNTA_DIRECTIVA,
     VOCAL,
-    VOCAL_1,
-    VOCAL_10_CONSEJO_RECTOR,
-    VOCAL_10_JUNTA_DIRECTIVA,
-    VOCAL_2,
-    VOCAL_2_JUNTA_DIRECTIVA,
-    VOCAL_3_CONSEJO_RECTOR,
-    VOCAL_3_JUNTA_DIRECTIVA,
-    VOCAL_4_CONSEJO_RECTOR,
-    VOCAL_4_JUNTA_DIRECTIVA,
-    VOCAL_6_CONSEJO_RECTOR,
-    VOCAL_6_JUNTA_DIRECTIVA,
-    VOCAL_7_JUNTA_DIRECTIVA,
-    VOCAL_8_CONSEJO_RECTOR,
     VOCAL_COMIT_AUD,
+    VOCAL_CONSEJO_RECTOR,
     VOCAL_E_P_JUNTA_DIRECTIVA,
     VOCAL_JUNTA_DIRECTIVA,
     VOCAL_JUNTA_RECTORA,
