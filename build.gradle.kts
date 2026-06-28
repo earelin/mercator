@@ -114,6 +114,31 @@ testing {
                 testTask.configure { shouldRunAfter(tasks.named("test")) }
             }
         }
+
+        // Black-box end-to-end tests (src/acceptance/java): build the production image and drive it
+        // over HTTP via Docker Compose + Testcontainers, never touching the production classes. Wired
+        // into neither `check` nor `build`; run on demand (needs Docker) with `./gradlew acceptance`.
+        val acceptance by registering(JvmTestSuite::class) {
+            useJUnitJupiter(libs.versions.junit.jupiter)
+            dependencies {
+                // Deliberately NOT extending the `test` configurations (unlike `integration`): that
+                // pulls in the Micronaut platform BOM, which force-upgrades testcontainers/rest-assured
+                // past the catalog pins. Micronaut-free keeps the suite isolated and the pins holding.
+                implementation(libs.assertj.core)
+                implementation(libs.rest.assured)
+                implementation(libs.testcontainers)
+                runtimeOnly(libs.logback.classic)
+            }
+            targets.configureEach {
+                testTask.configure {
+                    dependsOn(tasks.named("dockerBuild"))
+                    shouldRunAfter(tasks.named("test"), tasks.named("integration"))
+                    // Pull exactly the image `dockerBuild` produced (its default `<project>:latest`)
+                    // without repurposing that global default tag; forwarded to Compose as MERCATOR_IMAGE.
+                    systemProperty("mercator.acceptance.image", "${project.name}:latest")
+                }
+            }
+        }
     }
 }
 

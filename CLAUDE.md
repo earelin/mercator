@@ -18,6 +18,7 @@ the constraints that govern it.
 ./gradlew build          # compile + test
 ./gradlew test           # run the fast unit tests only
 ./gradlew integration    # run the integration tests (controllers + adapters; needs Docker)
+./gradlew acceptance     # build the app image + run the black-box acceptance tests over Docker Compose (needs Docker)
 ./gradlew run            # start the Micronaut server locally
 ./gradlew check          # unit test + Checkstyle + PMD + CPD + Error Prone/NullAway + SpotBugs/FindSecBugs (no Docker; excludes integration)
 ```
@@ -71,13 +72,22 @@ Two helper scripts live in `scripts/` (run from anywhere — they `cd` to the re
 - **AssertJ** (`assertThat`) for assertions, not native JUnit assertions; **assertj-db** for
   database-backed checks.
 - Test method names are **snake_case**.
-- **Two source sets (JVM Test Suite plugin).** `src/test` holds the fast **unit** tests (the
+- **Three source sets (JVM Test Suite plugin).** `src/test` holds the fast **unit** tests (the
   `domain` core plus the pure-logic/in-memory `infrastructure` ones) — no Docker, run by
   `./gradlew test`/`check`. `src/integration` holds the **integration** tests that cross a process
   boundary: the controllers over Micronaut's embedded HTTP server (driven with **REST Assured**),
   the JDBC adapters against a real Postgres (Testcontainers), and the HTTP transport over a socket.
   Run them with `./gradlew integration` (needs Docker); they are deliberately **not** part of
-  `check`.
+  `check`. `src/acceptance` holds the **black-box acceptance** tests: they build the production
+  Docker image (via `dockerBuild`, its default `<project>:latest` tag), stand up the full stack (the
+  app image, a Postgres, and a **WireMock** simulating the external BORME/BOE HTTP services) with **Docker
+  Compose** through Testcontainers' `ComposeContainer` (the project's `docker-compose.yml`, app behind
+  the `app` compose profile; WireMock stubs under `docker/acceptance/wiremock`), and drive the
+  running container's REST API over the network with **REST Assured**. Unlike `integration` they never touch
+  the production classes — the app is opaque, reached only over HTTP — so the suite is **isolated
+  from the Micronaut platform BOM** (it declares its own REST Assured/Testcontainers versions from
+  the catalog). Run them with `./gradlew acceptance` (needs Docker + a built image); the test task is
+  wired into **neither `check` nor `build`**.
 - `./gradlew check` runs Checkstyle (shared config in `config/checkstyle/`), PMD (curated ruleset
   in `config/pmd/`) and CPD (duplication); keep all three green. It also compiles with **Error Prone**
   (javac bug-pattern checks) and **NullAway** (nullness analysis, configured inline in

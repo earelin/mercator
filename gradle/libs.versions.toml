@@ -17,6 +17,7 @@ nullaway          = "0.13.7"
 pdfbox            = "3.0.7"
 pmd               = "7.24.0"
 postgresql        = "42.7.11"
+rest-assured      = "5.5.7"
 slf4j             = "2.0.18"
 spotbugs-plugin   = "6.5.8"
 spotbugs-tool     = "4.10.2"
@@ -40,7 +41,9 @@ mockito-junit-jupiter     = { module = "org.mockito:mockito-junit-jupiter",     
 nullaway                  = { module = "com.uber.nullaway:nullaway",                      version.ref = "nullaway" }
 pdfbox                    = { module = "org.apache.pdfbox:pdfbox",                       version.ref = "pdfbox" }
 postgresql                = { module = "org.postgresql:postgresql",                     version.ref = "postgresql" }
+rest-assured              = { module = "io.rest-assured:rest-assured",                  version.ref = "rest-assured" }
 slf4j-api                 = { module = "org.slf4j:slf4j-api",                          version.ref = "slf4j" }
+testcontainers            = { module = "org.testcontainers:testcontainers",             version.ref = "testcontainers" }
 testcontainers-junit      = { module = "org.testcontainers:junit-jupiter",              version.ref = "testcontainers" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql",               version.ref = "testcontainers" }
 
