@@ -10,10 +10,11 @@ import org.testcontainers.containers.wait.strategy.Wait;
 
 /**
  * Base for the black-box acceptance tests. It boots the full application stack — the production
- * Docker image ({@code mercator:acceptance}, built by {@code ./gradlew dockerBuild}) plus a Postgres
- * — once for the whole suite via Docker Compose ({@code docker/acceptance/compose.yaml}), then points
- * REST Assured at the running app container. The application is treated as opaque: tests reach it
- * only over HTTP, never through its classes.
+ * Docker image (built by {@code ./gradlew dockerBuild} and passed in via the {@code
+ * mercator.acceptance.image} system property), a Postgres, and a WireMock standing in for the
+ * external BORME/BOE services — once for the whole suite via Docker Compose ({@code
+ * docker/acceptance/compose.yaml}), then points REST Assured at the running app container. The
+ * application is treated as opaque: tests reach it only over HTTP, never through its classes.
  *
  * <p>The stack is a Testcontainers <em>singleton container</em>: started on first class load and left
  * to Testcontainers' Ryuk reaper to tear down at JVM exit, so every acceptance test class shares the
