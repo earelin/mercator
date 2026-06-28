@@ -3,6 +3,7 @@ package net.earelin.mercator.acceptance;
 import io.restassured.RestAssured;
 import java.io.File;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.containers.ComposeContainer;
@@ -11,8 +12,9 @@ import org.testcontainers.containers.wait.strategy.Wait;
 /**
  * Base for the black-box acceptance tests: boots the full stack — the production image (built by
  * {@code dockerBuild}, passed in via the {@code mercator.acceptance.image} system property), a
- * Postgres, and a WireMock for the external BORME/BOE services — once for the suite via Docker
- * Compose, then points REST Assured at the app container. The app is opaque, reached only over HTTP.
+ * Postgres, and a WireMock for the external BORME/BOE services — from the project's
+ * {@code docker-compose.yml} (the {@code app} profile) once for the suite, then points REST Assured
+ * at the app container. The app is opaque, reached only over HTTP.
  *
  * <p>Singleton-container pattern: started on first class load, reaped by Ryuk at JVM exit, so every
  * acceptance class shares the one boot.
@@ -23,12 +25,12 @@ abstract class AcceptanceTestSupport {
     private static final int APP_PORT = 8080;
 
     private static final ComposeContainer ENVIRONMENT =
-            new ComposeContainer(new File("docker/acceptance/compose.yaml"))
+            new ComposeContainer(new File("docker-compose.yml"))
                     // Host daemon, not the containerised default, so the locally built image is visible.
                     .withLocalCompose(true)
-                    // The app image is gated behind the `app` profile; the backing services always start.
+                    // The app/wiremock services are gated behind the `app` profile; db always starts.
                     .withEnv("COMPOSE_PROFILES", "app")
-                    .withEnv(appImageEnv())
+                    .withEnv(stackEnv())
                     // Liveness/routing probe only: once up, Micronaut 404s any unmatched path. The POST
                     // tests are what assert the gated route is actually present.
                     .withExposedService(
@@ -39,12 +41,19 @@ abstract class AcceptanceTestSupport {
                                     .withStartupTimeout(Duration.ofMinutes(4)));
 
     /**
-     * {@code MERCATOR_IMAGE} bound to the image tag Gradle built, or empty when the system property is
-     * absent — the compose file requires the variable, so a run outside Gradle must supply it.
+     * Compose variables for the acceptance run: a throwaway db password, {@code DB_PORT=0} so the db
+     * takes a random host port instead of clashing with a dev db on 5432, and the exact image tag
+     * Gradle built (when the system property is absent the compose file falls back to its default tag).
      */
-    private static Map<String, String> appImageEnv() {
+    private static Map<String, String> stackEnv() {
+        var env = new HashMap<String, String>();
+        env.put("POSTGRES_PASSWORD", "change_me");
+        env.put("DB_PORT", "0");
         String image = System.getProperty("mercator.acceptance.image");
-        return image == null || image.isBlank() ? Map.of() : Map.of("MERCATOR_IMAGE", image);
+        if (image != null && !image.isBlank()) {
+            env.put("MERCATOR_IMAGE", image);
+        }
+        return env;
     }
 
     static {

@@ -1,8 +1,8 @@
 # Acceptance WireMock stubs
 
-Mounted read-only into the acceptance `wiremock` service at `/home/wiremock` (see
-`docker/acceptance/compose.yaml`). WireMock simulates the external BORME/BOE HTTP services so the
-acceptance run is deterministic and offline.
+Mounted read-only into the `wiremock` service at `/home/wiremock` (the `app` profile in the project's
+`docker-compose.yml`). WireMock simulates the external BORME/BOE HTTP services so the acceptance run
+is deterministic and offline.
 
 - `mappings/` — stub definitions (`*.json`): request matchers → canned responses.
 - `__files/` — static response bodies referenced from a mapping via `"bodyFileName"`.

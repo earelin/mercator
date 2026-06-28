@@ -81,8 +81,8 @@ Two helper scripts live in `scripts/` (run from anywhere — they `cd` to the re
   `check`. `src/acceptance` holds the **black-box acceptance** tests: they build the production
   Docker image (via `dockerBuild`, its default `<project>:latest` tag), stand up the full stack (the
   app image, a Postgres, and a **WireMock** simulating the external BORME/BOE HTTP services) with **Docker
-  Compose** through Testcontainers' `ComposeContainer` (`docker/acceptance/compose.yaml`, app behind
-  the `app` compose profile; WireMock stubs under `docker/acceptance/wiremock`), and drive the
+  Compose** through Testcontainers' `ComposeContainer` (the project's `docker-compose.yml`, app/WireMock
+  behind the `app` compose profile; WireMock stubs under `docker/acceptance/wiremock`), and drive the
   running container's REST API over the network with **REST Assured**. Unlike `integration` they never touch
   the production classes — the app is opaque, reached only over HTTP — so the suite is **isolated
   from the Micronaut platform BOM** (it declares its own REST Assured/Testcontainers versions from

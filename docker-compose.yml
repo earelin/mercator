@@ -19,5 +19,42 @@ services:
       timeout: 5s
       retries: 5
 
+  # Acceptance-test stack, behind the `app` profile so `docker compose up` (dev) still starts only
+  # db. The acceptance suite (src/acceptance) runs this via Testcontainers' ComposeContainer with
+  # COMPOSE_PROFILES=app, supplying MERCATOR_IMAGE and DB_PORT=0 (random host port, so the throwaway
+  # db never clashes with a dev db already on 5432). Ports are `expose`-only; Testcontainers maps them.
+  wiremock:
+    image: wiremock/wiremock:3.13.2
+    profiles: [app]
+    # Offline stand-in for the external BORME/BOE services. Stub mappings + bodies are mounted
+    # read-only from docker/acceptance/wiremock; --verbose logs unmatched requests.
+    command: [ "--verbose", "--disable-banner" ]
+    volumes:
+      - ./docker/acceptance/wiremock:/home/wiremock:ro
+    expose:
+      - "8080"
+
+  app:
+    # Defaults to dockerBuild's `<project>:latest`; the acceptance suite passes the exact tag.
+    image: ${MERCATOR_IMAGE:-mercator:latest}
+    profiles: [app]
+    depends_on:
+      db:
+        condition: service_healthy
+      wiremock:
+        condition: service_started
+    environment:
+      # Deployed `prod` profile (fail-closed: no fallback secrets) against the stack's db.
+      MICRONAUT_ENVIRONMENTS: prod
+      JDBC_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-mercator}
+      DB_USER: ${POSTGRES_USER:-mercator}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      # Forward-looking: points the BORME/BOE fetch layer at WireMock. The ingestion engine that builds
+      # the document URLs isn't built yet, so this base-URL seam is wired ready for it (ADR-0018).
+      MERCATOR_SOURCE_BOE_BASE_URL: http://wiremock:8080
+      MERCATOR_IMPORTS_HISTORICAL_ENABLED: "true"
+    expose:
+      - "8080"
+
 volumes:
   db_data:
