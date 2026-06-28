@@ -1,6 +1,4 @@
 {
-  "//": "EXAMPLE stub — delete or replace once the ingestion engine's real BORME/BOE URL shapes land.",
-  "//purpose": "Shows the pattern: match a fetch the app makes and return a canned body, so the acceptance run is deterministic and offline.",
   "request": {
     "method": "GET",
     "urlPathPattern": "/borme/dias/.*"

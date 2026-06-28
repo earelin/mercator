@@ -28,7 +28,6 @@ abstract class AcceptanceTestSupport {
             new ComposeContainer(new File("docker-compose.yml"))
                     // Host daemon, not the containerised default, so the locally built image is visible.
                     .withLocalCompose(true)
-                    // The app/wiremock services are gated behind the `app` profile; db always starts.
                     .withEnv("COMPOSE_PROFILES", "app")
                     .withEnv(stackEnv())
                     // Liveness/routing probe only: once up, Micronaut 404s any unmatched path. The POST
@@ -41,14 +40,15 @@ abstract class AcceptanceTestSupport {
                                     .withStartupTimeout(Duration.ofMinutes(4)));
 
     /**
-     * Compose variables for the acceptance run: a throwaway db password, {@code DB_PORT=0} so the db
-     * takes a random host port instead of clashing with a dev db on 5432, and the exact image tag
-     * Gradle built (when the system property is absent the compose file falls back to its default tag).
+     * Compose variables for the acceptance run: a throwaway db password, {@code DB_PORT=0} and {@code
+     * WIREMOCK_PORT=0} so the db and wiremock take random host ports rather than clashing with a dev
+     * stack on 5432/8090, and the exact image tag Gradle built (else the compose file's default tag).
      */
     private static Map<String, String> stackEnv() {
         var env = new HashMap<String, String>();
         env.put("POSTGRES_PASSWORD", "change_me");
         env.put("DB_PORT", "0");
+        env.put("WIREMOCK_PORT", "0");
         String image = System.getProperty("mercator.acceptance.image");
         if (image != null && !image.isBlank()) {
             env.put("MERCATOR_IMAGE", image);
