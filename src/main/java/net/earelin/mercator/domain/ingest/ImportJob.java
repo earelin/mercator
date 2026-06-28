@@ -1,5 +1,6 @@
 package net.earelin.mercator.domain.ingest;
 
+import io.micronaut.core.annotation.Nullable;
 import java.time.Instant;
 import java.util.Objects;
 
@@ -20,7 +21,7 @@ public record ImportJob(
         ImportKind kind,
         String target,
         JobStatus status,
-        String detail,
+        @Nullable String detail,
         Instant createdAt) {
 
     public ImportJob {
@@ -32,7 +33,7 @@ public record ImportJob(
     }
 
     /** Returns a copy of this job in {@code newStatus} with the given (nullable) detail. */
-    public ImportJob withStatus(JobStatus newStatus, String newDetail) {
+    public ImportJob withStatus(JobStatus newStatus, @Nullable String newDetail) {
         return new ImportJob(id, kind, target, newStatus, newDetail, createdAt);
     }
 }

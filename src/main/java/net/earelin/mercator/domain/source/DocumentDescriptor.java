@@ -1,5 +1,6 @@
 package net.earelin.mercator.domain.source;
 
+import io.micronaut.core.annotation.Nullable;
 import java.net.URI;
 import java.util.Objects;
 
@@ -18,10 +19,10 @@ import java.util.Objects;
  */
 public record DocumentDescriptor(
         String bormeId,
-        String province,
+        @Nullable String province,
         URI urlXml,
-        URI urlHtml,
-        URI urlPdf) {
+        @Nullable URI urlHtml,
+        @Nullable URI urlPdf) {
 
     public DocumentDescriptor {
         Objects.requireNonNull(bormeId, "bormeId");

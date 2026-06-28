@@ -1,5 +1,6 @@
 package net.earelin.mercator.domain.source;
 
+import io.micronaut.core.annotation.Nullable;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -98,8 +99,8 @@ public final class DocumentFetchService implements DocumentSource {
      * Attempt one representation. Returns the materialised document on success, or {@code null}
      * after appending a {@link HttpFetchResult.Failure} describing why it could not be used.
      */
-    private FetchedDocument tryRepresentation(
-            String bormeId, URI uri, Representation representation, List<HttpFetchResult.Failure> failures) {
+    private @Nullable FetchedDocument tryRepresentation(
+            String bormeId, @Nullable URI uri, Representation representation, List<HttpFetchResult.Failure> failures) {
         if (uri == null) {
             failures.add(new HttpFetchResult.Failure(
                     ErrorKind.PERMANENT, 0, representation + " url not available"));
@@ -117,7 +118,7 @@ public final class DocumentFetchService implements DocumentSource {
         }
     }
 
-    private FetchedDocument materialiseFresh(
+    private @Nullable FetchedDocument materialiseFresh(
             String bormeId, Representation representation, byte[] body, List<HttpFetchResult.Failure> failures) {
         try {
             Optional<FetchedDocument> doc = materialize(bormeId, representation, body);

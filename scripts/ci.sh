@@ -7,10 +7,12 @@
 #   3. Mermaid diagram syntax      -> @mermaid-js/mermaid-cli (mmdc)  (cmd: mermaid)
 #   4. Docker Compose files        -> dclint (via npx)          (cmd: compose)
 # And then:
-#   5. Gradle check (Checkstyle, CPD/duplication, tests) -> ./gradlew check  (cmd: check)
+#   5. Gradle check (Checkstyle, PMD, CPD/duplication, Error Prone/NullAway, SpotBugs/FindSecBugs, tests) -> ./gradlew check  (cmd: check)
 #   6. Gradle build                -> ./gradlew build           (cmd: build)
 #   7. SQL lint                    -> sqlfluff lint             (cmd: sql)
 #   8. OpenAPI validate + security -> spectral (spectral:oas + OWASP ruleset)  (cmd: openapi)
+#   9. SAST security scan          -> opengrep (Semgrep-compatible rulesets)   (cmd: opengrep)
+#  10. GitHub Actions workflow lint -> actionlint                              (cmd: actions)
 #
 # Step 8 statically lints the contract document. The heavyweight dynamic check — driving a
 # *running* server against the contract (drift + security) — lives in a separate script,
@@ -34,7 +36,7 @@ err()  { printf '\033[31m✗ %s\033[0m\n' "$1" >&2; }
 fail=0
 
 # The ordered list of checks; also the valid command names (function check_<name>).
-CHECKS=(markdown links mermaid compose check build sql openapi)
+CHECKS=(markdown links mermaid compose check build sql openapi opengrep actions)
 
 usage() {
   cat <<EOF
@@ -48,10 +50,12 @@ Checks:
   links      Relative/anchor + external links (lychee; CHECK_EXTERNAL=0 to skip external)
   mermaid    Mermaid diagram syntax (mmdc)
   compose    Docker Compose lint (dclint via npx)
-  check      Gradle check — Checkstyle, CPD/duplication, tests (./gradlew check)
+  check      Gradle check — Checkstyle, PMD, CPD/duplication, Error Prone/NullAway, SpotBugs/FindSecBugs, tests (./gradlew check)
   build      Gradle build (./gradlew build)
   sql        SQL lint (sqlfluff)
   openapi    OpenAPI validate + security (spectral)
+  opengrep   SAST security scan of src/main (opengrep; p/java + p/secrets + p/security-audit)
+  actions    GitHub Actions workflow lint (actionlint; + shellcheck on run: scripts if present)
 
 Examples:
   ./scripts/ci.sh                       # run all checks
@@ -162,11 +166,11 @@ check_compose() {
   fi
 }
 
-# --- 5) Gradle check (Checkstyle, CPD/duplication, tests) -----------------
+# --- 5) Gradle check (Checkstyle, PMD, CPD/duplication, Error Prone/NullAway, SpotBugs/FindSecBugs, tests) ---
 check_check() {
   bold "Gradle check (./gradlew check)"
   if [ -f ./gradlew ]; then
-    if ./gradlew check; then ok "gradle check"; else err "gradle check failed (checkstyle/CPD/tests)"; fail=1; fi
+    if ./gradlew check; then ok "gradle check"; else err "gradle check failed (checkstyle/PMD/CPD/Error Prone/NullAway/SpotBugs/tests)"; fail=1; fi
   else
     err "gradlew not found — run: gradle wrapper --gradle-version 9.5.1"; fail=1
   fi
@@ -210,6 +214,39 @@ check_openapi() {
     fi
   else
     err "npx not found"; fail=1
+  fi
+}
+
+# --- 9) Opengrep SAST (security static analysis) --------------------------
+check_opengrep() {
+  bold "Opengrep SAST (security)"
+  if command -v opengrep >/dev/null 2>&1; then
+    # Semgrep-compatible registry rulesets: Java security/bugs (p/java), hardcoded secrets
+    # (p/secrets) and the cross-language security audit (p/security-audit). Scoped to the
+    # production sources (src/main): like SpotBugs, test/integration fixtures legitimately do
+    # "unsafe" things (e.g. building dynamic SQL to exercise a DB CHECK constraint) that are noise
+    # here. --error makes any finding fail the run; --quiet stays silent unless there are findings.
+    # Resolving the rulesets needs network on first run (cached thereafter).
+    if opengrep scan -c p/java -c p/secrets -c p/security-audit \
+         --error --disable-version-check --quiet src/main; then
+      ok "opengrep SAST"
+    else
+      err "opengrep SAST findings"; fail=1
+    fi
+  else
+    err "opengrep not found — install: curl -fsSL https://raw.githubusercontent.com/opengrep/opengrep/main/install.sh | bash"; fail=1
+  fi
+}
+
+# --- 10) GitHub Actions workflow lint (actionlint) ------------------------
+check_actions() {
+  bold "GitHub Actions lint (actionlint)"
+  if command -v actionlint >/dev/null 2>&1; then
+    # No args: actionlint auto-discovers .github/workflows/*.yml. It also runs shellcheck over the
+    # `run:` scripts when shellcheck is on PATH, catching shell bugs in workflow steps.
+    if actionlint; then ok "actionlint"; else err "actionlint issues"; fail=1; fi
+  else
+    err "actionlint not found — install: go install github.com/rhysd/actionlint/cmd/actionlint@latest (or: brew install actionlint)"; fail=1
   fi
 }
 

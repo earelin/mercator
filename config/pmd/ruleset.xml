@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+<ruleset name="Mercator"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+  <description>
+    Curated PMD rules for Mercator. Deliberately conservative — high-signal correctness,
+    dead-code and performance rules with few false positives — to complement Checkstyle (style)
+    and CPD (duplication) rather than overlap with them. Naming/formatting rules are left to
+    Checkstyle; in particular no method-naming rule runs, so snake_case test methods are fine.
+  </description>
+
+  <!-- Correctness / likely bugs -->
+  <rule ref="category/java/errorprone.xml/BrokenNullCheck"/>
+  <rule ref="category/java/errorprone.xml/CheckSkipResult"/>
+  <rule ref="category/java/errorprone.xml/ClassCastExceptionWithToArray"/>
+  <rule ref="category/java/errorprone.xml/CompareObjectsWithEquals"/>
+  <rule ref="category/java/errorprone.xml/EmptyCatchBlock"/>
+  <rule ref="category/java/errorprone.xml/EmptyFinalizer"/>
+  <rule ref="category/java/errorprone.xml/EqualsNull"/>
+  <rule ref="category/java/errorprone.xml/JumbledIncrementer"/>
+  <rule ref="category/java/errorprone.xml/MisplacedNullCheck"/>
+  <rule ref="category/java/errorprone.xml/OverrideBothEqualsAndHashcode"/>
+  <rule ref="category/java/errorprone.xml/ReturnFromFinallyBlock"/>
+  <rule ref="category/java/errorprone.xml/UnconditionalIfStatement"/>
+  <rule ref="category/java/errorprone.xml/UnusedNullCheckInEquals"/>
+  <rule ref="category/java/errorprone.xml/UseEqualsToCompareStrings"/>
+
+  <!-- Dead code -->
+  <rule ref="category/java/bestpractices.xml/UnusedLocalVariable"/>
+  <rule ref="category/java/bestpractices.xml/UnusedPrivateField"/>
+  <rule ref="category/java/bestpractices.xml/UnusedPrivateMethod"/>
+  <rule ref="category/java/bestpractices.xml/UnusedFormalParameter"/>
+  <rule ref="category/java/bestpractices.xml/UnusedAssignment"/>
+
+  <!-- Defensive coding -->
+  <rule ref="category/java/bestpractices.xml/MissingOverride"/>
+  <rule ref="category/java/bestpractices.xml/PreserveStackTrace"/>
+  <rule ref="category/java/bestpractices.xml/UseTryWithResources"/>
+  <rule ref="category/java/errorprone.xml/CloseResource"/>
+
+  <!-- Performance -->
+  <rule ref="category/java/performance.xml/AppendCharacterWithChar"/>
+  <rule ref="category/java/performance.xml/ConsecutiveLiteralAppends"/>
+  <rule ref="category/java/performance.xml/InefficientStringBuffering"/>
+  <rule ref="category/java/performance.xml/OptimizableToArrayCall"/>
+  <rule ref="category/java/performance.xml/StringInstantiation"/>
+  <rule ref="category/java/performance.xml/StringToString"/>
+  <rule ref="category/java/performance.xml/UseIndexOfChar"/>
+  <rule ref="category/java/performance.xml/UseStringBufferLength"/>
+
+  <!-- Simplification -->
+  <rule ref="category/java/design.xml/SimplifyBooleanReturns"/>
+  <rule ref="category/java/design.xml/SimplifyBooleanExpressions"/>
+  <rule ref="category/java/design.xml/SimplifyConditional"/>
+  <rule ref="category/java/design.xml/UselessOverridingMethod"/>
+  <rule ref="category/java/design.xml/CollapsibleIfStatements"/>
+
+</ruleset>

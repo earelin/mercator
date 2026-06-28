@@ -1,5 +1,6 @@
 package net.earelin.mercator.domain.source;
 
+import io.micronaut.core.annotation.Nullable;
 import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Objects;
@@ -30,7 +31,7 @@ public record FetchedDocument(
         Representation representation,
         Charset charset,
         String rawBody,
-        DocumentMetadata metadata,
+        @Nullable DocumentMetadata metadata,
         List<Paragraph> paragraphs) {
 
     public FetchedDocument {

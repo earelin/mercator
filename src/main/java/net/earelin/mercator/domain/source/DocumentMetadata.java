@@ -1,5 +1,6 @@
 package net.earelin.mercator.domain.source;
 
+import io.micronaut.core.annotation.Nullable;
 import java.net.URI;
 import java.time.LocalDate;
 
@@ -17,10 +18,10 @@ import java.time.LocalDate;
  * @param urlPdf        the authentic PDF URL advertised by the metadata, or {@code null}
  */
 public record DocumentMetadata(
-        String identificador,
-        String titulo,
-        String seccion,
-        LocalDate pubDate,
-        Integer pages,
-        URI urlPdf) {
+        @Nullable String identificador,
+        @Nullable String titulo,
+        @Nullable String seccion,
+        @Nullable LocalDate pubDate,
+        @Nullable Integer pages,
+        @Nullable URI urlPdf) {
 }

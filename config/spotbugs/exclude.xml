@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SpotBugs (+ Find Security Bugs) exclude filter for Mercator.
+
+  Scope: drop findings in Micronaut's annotation-processor output — the generated bean definitions,
+  introspections, interceptors and factory references are not hand-written code, so warnings there
+  are noise we cannot act on. Hand-written code is analysed in full.
+-->
+<FindBugsFilter xmlns="https://github.com/spotbugs/filter/3.0.0">
+  <!-- Micronaut bean definitions / references: $Foo$Definition, $Foo$Definition$Reference, … -->
+  <Match>
+    <Class name="~.*\$Definition(\$.*)?"/>
+  </Match>
+  <!-- Micronaut compile-time bean introspections: $Foo$Introspection -->
+  <Match>
+    <Class name="~.*\$Introspection(\$.*)?"/>
+  </Match>
+  <!-- Micronaut AOP interceptors: Foo$Intercepted, $Foo$Intercepted$… -->
+  <Match>
+    <Class name="~.*\$Intercepted(\$.*)?"/>
+  </Match>
+  <!-- Micronaut executable-method wrappers: $Foo$Exec, $Foo$…$Exec -->
+  <Match>
+    <Class name="~.*\$Exec(\$.*)?"/>
+  </Match>
+
+  <!--
+    Deliberate design / contextual false positives below. Each is scoped to a specific class so the
+    detector stays active everywhere else.
+  -->
+
+  <!--
+    byte[]-carrying value records intentionally share the array by reference: these are internal,
+    short-lived carriers for (potentially large) document bodies on a single cheap VPS, where
+    defensive-copying on every construct/accessor would add needless allocation. The byte[] choice is
+    already an accepted trade-off (see the Error Prone ArrayRecordComponent warnings).
+  -->
+  <Match>
+    <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    <Or>
+      <Class name="net.earelin.mercator.domain.source.CachedDocument"/>
+      <Class name="net.earelin.mercator.domain.source.HttpFetchResult$Success"/>
+      <Class name="net.earelin.mercator.infrastructure.http.HttpTransport$HttpResponseBytes"/>
+    </Or>
+  </Match>
+
+  <!--
+    Find Security Bugs flags ThreadLocalRandom as a predictable PRNG, but here it only computes
+    retry-backoff jitter (ADR-0018); the value is never security-sensitive, so SecureRandom would be
+    wrong (needless entropy draw on the hot retry path).
+  -->
+  <Match>
+    <Bug pattern="PREDICTABLE_RANDOM"/>
+    <Class name="net.earelin.mercator.infrastructure.http.RetryingBoeHttpClient"/>
+  </Match>
+
+  <!--
+    False positive: the DocumentBuilderFactory IS hardened against XXE in the secureFactory() helper
+    (disallow-doctype-decl=true — the OWASP-recommended primary defence — plus FEATURE_SECURE_PROCESSING
+    and empty ACCESS_EXTERNAL_DTD/SCHEMA). Find Security Bugs reports it only because it does not follow
+    the hardening into that helper method.
+  -->
+  <Match>
+    <Bug pattern="XXE_DOCUMENT"/>
+    <Class name="net.earelin.mercator.domain.source.XmlDocumentParser"/>
+  </Match>
+</FindBugsFilter>

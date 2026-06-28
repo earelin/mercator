@@ -18,13 +18,19 @@ permissions:
   contents: read
 
 jobs:
-  # ci.sh steps 5 + 6: ./gradlew check (Checkstyle, CPD, tests) and ./gradlew build.
+  # ci.sh steps 5 + 6: ./gradlew check (Checkstyle, PMD, CPD, Error Prone/NullAway, SpotBugs/FindSecBugs, tests) and ./gradlew build.
   # `build` depends on `check`, so one invocation covers both. Tests stand up a real
   # Postgres via Testcontainers, which uses the Docker daemon present on ubuntu-latest.
+  # It also surfaces findings on the PR: Error Prone via a javac problem matcher (it gates by
+  # failing compilation), SpotBugs as a SARIF upload to Code Scanning, and Checkstyle via reviewdog.
   build:
     name: Build & test (Gradle)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write   # upload-sarif (SpotBugs) to GitHub Code Scanning
+      checks: write            # reviewdog github-pr-check annotations (Checkstyle)
     # Most persistence tests use Testcontainers (self-contained), but the @MicronautTest
     # context tests boot Hikari, which connects eagerly even with Flyway disabled — so they
     # need a reachable Postgres, exactly as local dev provides via `docker compose up`.
@@ -57,12 +63,51 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
 
-      - name: Build (compile + test + Checkstyle + CPD)
-        run: ./gradlew build
+      # Surface Error Prone / NullAway (they print javac error:/warning: lines) as PR annotations.
+      # They already gate by failing compilation; this just maps the diagnostics onto the diff.
+      - name: Register javac problem matcher
+        run: echo "::add-matcher::.github/matchers/javac.json"
+
+      # `--continue` so every quality task runs and writes its report even when an earlier one
+      # fails — the SpotBugs SARIF and Checkstyle XML below are produced regardless, and the job
+      # still goes red on any violation (gate). Bytecode tasks (SpotBugs) are skipped only if
+      # compilation itself fails, which is the correct outcome.
+      - name: Build (compile + test + Checkstyle + PMD + CPD + Error Prone/NullAway + SpotBugs/FindSecBugs)
+        run: ./gradlew build --continue
         env:
           JDBC_URL: jdbc:postgresql://localhost:5432/mercator
           DB_USER: mercator
           DB_PASSWORD: change_me
+
+      # SpotBugs (+ Find Security Bugs) emits SARIF from the Gradle task → GitHub Code Scanning.
+      - name: Upload SpotBugs SARIF
+        if: ${{ always() && hashFiles('build/reports/spotbugs/main.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@dd903d2e4f5405488e5ef1422510ee31c8b32357 # v3.36.2
+        with:
+          sarif_file: build/reports/spotbugs/main.sarif
+          category: spotbugs
+
+      # Checkstyle has no SARIF; feed its XML to reviewdog, which annotates the diff with the
+      # default GITHUB_TOKEN (no Code Security add-on). filter-mode=added = SonarQube-style new-code
+      # gate. Gradle is the hard gate, so reviewdog only annotates (continue-on-error).
+      - name: Set up reviewdog
+        if: ${{ always() }}
+        uses: reviewdog/action-setup@d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f # v1.5.0
+        with:
+          reviewdog_version: latest
+
+      - name: Checkstyle → reviewdog
+        if: ${{ always() }}
+        continue-on-error: true
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          shopt -s nullglob
+          for f in build/reports/checkstyle/*.xml; do
+            echo "reviewdog: $f"
+            reviewdog -f=checkstyle -name="checkstyle" \
+              -reporter=github-pr-check -filter-mode=added -level=warning < "$f"
+          done
 
       - name: Upload reports on failure
         if: failure()
@@ -156,3 +201,117 @@ jobs:
 
       - name: sqlfluff lint
         run: sqlfluff lint src/main/resources/db/migration --format github-annotation-native
+
+  # ci.sh step 9: SAST security scan. No maintained, pinnable Opengrep action exists, so this
+  # mirrors the script step: download the pinned release binary (verified by SHA-256, the analogue
+  # of the SHA-pinned actions elsewhere) and scan src/main with the Semgrep-compatible security
+  # rulesets. The rulesets are fetched from the registry at scan time.
+  sast:
+    name: SAST (opengrep)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write   # upload-sarif (Opengrep) to GitHub Code Scanning
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Install Opengrep (pinned)
+        run: |
+          set -euo pipefail
+          ver=v1.23.0
+          sha=1f06548af379ab6080698a609612890ffad2d92dc2172f1e97d38d48096d5ef8
+          curl -fsSL -o "$RUNNER_TEMP/opengrep" \
+            "https://github.com/opengrep/opengrep/releases/download/${ver}/opengrep_manylinux_x86"
+          echo "${sha}  $RUNNER_TEMP/opengrep" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/opengrep"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      # --error gates (the job goes red on findings); --sarif-output also writes the report so the
+      # findings land in Code Scanning even when the step fails (uploaded below with if: always()).
+      # SARIF is written into the workspace (not RUNNER_TEMP) so the hashFiles() guard below — which
+      # only matches paths under GITHUB_WORKSPACE — can detect it.
+      - name: Opengrep scan (src/main)
+        run: |
+          opengrep scan -c p/java -c p/secrets -c p/security-audit \
+            --error --disable-version-check --quiet \
+            --sarif-output=opengrep.sarif src/main
+
+      - name: Upload Opengrep SARIF
+        if: ${{ always() && hashFiles('opengrep.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@dd903d2e4f5405488e5ef1422510ee31c8b32357 # v3.36.2
+        with:
+          sarif_file: opengrep.sarif
+          category: opengrep
+
+  # PMD as SARIF for Code Scanning. The Gradle PMD plugin (run in the `build` job) is the gate but
+  # cannot emit SARIF, so this runs PMD's own CLI with the SAME ruleset to produce it. `pmd-version`
+  # must match `pmd` in gradle/libs.versions.toml. --no-fail-on-violation: the Gradle task gates,
+  # this job only surfaces findings.
+  pmd:
+    name: PMD (SARIF)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write   # upload-sarif (PMD) to GitHub Code Scanning
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      # PMD is a JVM tool; it needs a JDK on PATH to run (matches the project toolchain).
+      - name: Set up JDK 25
+        uses: actions/setup-java@ad2b38190b15e4d6bdf0c97fb4fca8412226d287 # v5.3.0
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Install PMD (pinned)
+        run: |
+          set -euo pipefail
+          pmd_version=7.24.0
+          sha=110934b36d39c19094d1b77386931978093f238f2c2f1851748822b69c7367ac
+          curl -fsSL -o "$RUNNER_TEMP/pmd.zip" \
+            "https://github.com/pmd/pmd/releases/download/pmd_releases%2F${pmd_version}/pmd-dist-${pmd_version}-bin.zip"
+          echo "${sha}  $RUNNER_TEMP/pmd.zip" | sha256sum -c -
+          unzip -q "$RUNNER_TEMP/pmd.zip" -d "$RUNNER_TEMP/pmd"
+          echo "$RUNNER_TEMP/pmd/pmd-bin-${pmd_version}/bin" >> "$GITHUB_PATH"
+
+      # SARIF written into the workspace so the hashFiles() guard (workspace-only) can detect it.
+      # PMD's SARIF renderer emits absolute file:// URIs (and ignores --relativize-paths-with), so
+      # strip the workspace prefix afterwards — otherwise Code Scanning can't map alerts to files.
+      - name: PMD scan (SARIF)
+        run: |
+          pmd check -d src -R config/pmd/ruleset.xml \
+            -f sarif -r pmd.sarif \
+            --no-cache --no-progress --no-fail-on-violation
+          sed -i "s#file://${GITHUB_WORKSPACE}/##g" pmd.sarif
+
+      - name: Upload PMD SARIF
+        if: ${{ always() && hashFiles('pmd.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@dd903d2e4f5405488e5ef1422510ee31c8b32357 # v3.36.2
+        with:
+          sarif_file: pmd.sarif
+          category: pmd
+
+  # ci.sh step 10: GitHub Actions workflow lint. reviewdog/action-actionlint runs actionlint
+  # (rhysd/actionlint) — which also shellchecks the run: scripts — and annotates the diff with the
+  # default GITHUB_TOKEN. fail_level: error gates the job on any actionlint error.
+  actions:
+    name: Actions lint (actionlint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      checks: write            # reviewdog github-pr-check annotations
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: actionlint
+        uses: reviewdog/action-actionlint@6fb7acc99f4a1008869fa8a0f09cfca740837d9d # v1.72.0
+        with:
+          reporter: github-pr-check
+          filter_mode: added
+          fail_level: error

@@ -1,4 +1,8 @@
+import com.github.spotbugs.snom.Confidence
+import com.github.spotbugs.snom.Effort
 import de.aaschmid.gradle.plugins.cpd.Cpd
+import net.ltgt.gradle.errorprone.CheckSeverity
+import net.ltgt.gradle.errorprone.errorprone
 
 plugins {
     // The Micronaut application: read-only API, the daily-incremental scheduler, and the gated
@@ -6,7 +10,12 @@ plugins {
     alias(libs.plugins.micronaut.application)
     // CPD (PMD's copy/paste detector) for code-duplication checking.
     alias(libs.plugins.cpd)
+    // Error Prone (javac bug-pattern checks) — also the host for NullAway's nullness analysis.
+    alias(libs.plugins.errorprone)
+    // SpotBugs (bytecode bug-pattern analysis) — hosts the Find Security Bugs detector pack.
+    alias(libs.plugins.spotbugs)
     checkstyle
+    pmd
 }
 
 group = "net.earelin.mercator"
@@ -37,6 +46,15 @@ application {
 
 dependencies {
     annotationProcessor("io.micronaut.data:micronaut-data-processor")
+
+    // Error Prone compiler plugin + NullAway nullness checker. The gradle-errorprone-plugin wires
+    // the `errorprone` configuration onto every JavaCompile task's processor path.
+    errorprone(libs.errorprone.core)
+    errorprone(libs.nullaway)
+
+    // Find Security Bugs — a SpotBugs detector pack adding security bug patterns (injection, weak
+    // crypto, SSRF, path traversal…). Loaded into SpotBugs via the `spotbugsPlugins` configuration.
+    spotbugsPlugins(libs.findsecbugs.plugin)
 
     implementation(libs.slf4j.api)
     implementation(libs.jsoup)
@@ -126,6 +144,66 @@ cpd {
 tasks.named<Cpd>("cpdCheck") {
     minimumTokenCount = 100
     ignoreFailures = false
+}
+
+// PMD source analysis. Runs as part of `check` (pmdMain + pmdTest, incl. the integration source
+// set). The curated ruleset lives in config/pmd; the bundled category rulesets are disabled so only
+// the rules we opt into apply.
+pmd {
+    toolVersion = libs.versions.pmd.get()
+    ruleSetConfig = resources.text.fromFile(rootProject.layout.projectDirectory.file("config/pmd/ruleset.xml"))
+    ruleSets = emptyList()
+    isConsoleOutput = true
+    isIgnoreFailures = false
+}
+
+// Error Prone runs inside javac on every compile task (main, test and integration), keeping its
+// default bug-pattern severities — real-bug patterns already fail the build, advisory ones stay
+// warnings. Micronaut's annotation-processor output is excluded so generated beans/introspections
+// aren't analysed.
+//
+// NullAway is promoted to an error and scoped to our own packages, so an unannotated nullable
+// dereference becomes a compile failure; it recognises the Micronaut `@Nullable`/`@NonNull` already
+// used in the codebase by simple name. It runs on the production (`main`) sources only: NullAway
+// models production nullness contracts, whereas tests deliberately pass/handle null and lean on
+// AssertJ's `isNotNull()`, which NullAway does not treat as a narrowing check.
+tasks.withType<JavaCompile>().configureEach {
+    options.errorprone {
+        disableWarningsInGeneratedCode = true
+        excludedPaths = ".*/build/generated/.*"
+        if (name == "compileJava") {
+            check("NullAway", CheckSeverity.ERROR)
+            option("NullAway:AnnotatedPackages", "net.earelin.mercator")
+        } else {
+            check("NullAway", CheckSeverity.OFF)
+        }
+    }
+}
+
+// SpotBugs analyses compiled bytecode for bug patterns; the Find Security Bugs pack (wired via the
+// `spotbugsPlugins` configuration above) adds security detectors (injection, weak crypto, SSRF,
+// path traversal…). MAX effort for the most thorough analysis, MEDIUM confidence to drop
+// low-confidence noise. The exclude filter skips Micronaut's annotation-processor output (generated
+// beans/introspections) and a few scoped false positives / deliberate trade-offs.
+//
+// It runs on the production (`main`) sources only (see the task-disabling below): Find Security Bugs
+// models the deployed attack surface, whereas test/integration fixtures legitimately do "unsafe"
+// things (dynamic SQL to exercise DB constraints, throwaway credentials…) that are pure noise here —
+// the same main-only reasoning as NullAway.
+spotbugs {
+    toolVersion = libs.versions.spotbugs.tool.get()
+    effort = Effort.MAX
+    reportLevel = Confidence.MEDIUM
+    excludeFilter = rootProject.layout.projectDirectory.file("config/spotbugs/exclude.xml")
+    ignoreFailures = false
+}
+
+tasks.withType<com.github.spotbugs.snom.SpotBugsTask>().configureEach {
+    // Only analyse production bytecode; skip the per-test-source-set tasks (spotbugsTest, etc.).
+    enabled = name == "spotbugsMain"
+    // HTML for humans; SARIF for CI to upload to GitHub Code Scanning (one category per tool).
+    reports.create("html") { required = true }
+    reports.create("sarif") { required = true }
 }
 
 tasks.withType<Test> {
