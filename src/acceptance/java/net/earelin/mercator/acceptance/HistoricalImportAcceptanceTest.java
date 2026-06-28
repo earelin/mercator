@@ -4,6 +4,7 @@ import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.restassured.http.ContentType;
+import io.restassured.response.Response;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -17,11 +18,7 @@ class HistoricalImportAcceptanceTest extends AcceptanceTestSupport {
 
     @Test
     void by_date_import_is_accepted_then_reports_status() {
-        var accepted = given()
-                .contentType(ContentType.JSON)
-                .body("{\"date\": \"2009-01-02\"}")
-                .when().post("/admin/imports/by-date")
-                .andReturn();
+        var accepted = postImport("/admin/imports/by-date", "{\"date\": \"2009-01-02\"}");
 
         assertThat(accepted.statusCode()).isEqualTo(202);
 
@@ -38,11 +35,7 @@ class HistoricalImportAcceptanceTest extends AcceptanceTestSupport {
 
     @Test
     void by_month_import_is_accepted() {
-        var response = given()
-                .contentType(ContentType.JSON)
-                .body("{\"month\": \"2009-01\"}")
-                .when().post("/admin/imports/by-month")
-                .andReturn();
+        var response = postImport("/admin/imports/by-month", "{\"month\": \"2009-01\"}");
 
         assertThat(response.statusCode()).isEqualTo(202);
         var body = response.jsonPath();
@@ -52,11 +45,7 @@ class HistoricalImportAcceptanceTest extends AcceptanceTestSupport {
 
     @Test
     void malformed_date_is_rejected_with_400() {
-        var response = given()
-                .contentType(ContentType.JSON)
-                .body("{\"date\": \"not-a-date\"}")
-                .when().post("/admin/imports/by-date")
-                .andReturn();
+        var response = postImport("/admin/imports/by-date", "{\"date\": \"not-a-date\"}");
 
         assertThat(response.statusCode()).isEqualTo(400);
     }
@@ -66,5 +55,14 @@ class HistoricalImportAcceptanceTest extends AcceptanceTestSupport {
         var response = given().when().get("/admin/imports/imp-unknown").andReturn();
 
         assertThat(response.statusCode()).isEqualTo(404);
+    }
+
+    /** POSTs a JSON body to an import endpoint and returns the raw response for assertion. */
+    private static Response postImport(String path, String jsonBody) {
+        return given()
+                .contentType(ContentType.JSON)
+                .body(jsonBody)
+                .when().post(path)
+                .andReturn();
     }
 }
