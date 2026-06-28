@@ -1,5 +1,6 @@
 package net.earelin.mercator.domain.parse;
 
+import io.micronaut.core.annotation.Nullable;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -22,6 +23,8 @@ public final class LegalSuffixes {
         "S.COM.P.A.", "SCP", "SICAV", "SL", "SLL", "SLLP", "SLNE", "SLP", "SLU", "SME", "SRL",
         "SRLL", "SRLP", "BVBA", "BV", "NV", "LTD");
 
+    private static final Set<String> FORM_SET = Set.copyOf(FORMS);
+
     private static final List<Suffix> BY_LENGTH_DESC = FORMS.stream()
         .map(form -> new Suffix(form, canon(form)))
         .sorted(Comparator.comparingInt((Suffix suffix) -> suffix.canon().length()).reversed())
@@ -32,11 +35,11 @@ public final class LegalSuffixes {
 
     /** The known legal-form suffixes. */
     public static Set<String> forms() {
-        return Set.copyOf(FORMS);
+        return FORM_SET;
     }
 
     /** The legal-form suffix terminating {@code rawName}, or empty if it carries none. */
-    public static Optional<String> detect(String rawName) {
+    public static Optional<String> detect(@Nullable String rawName) {
         if (rawName == null) {
             return Optional.empty();
         }
@@ -50,7 +53,7 @@ public final class LegalSuffixes {
     }
 
     /** Whether {@code rawName} looks like a company rather than a natural person. */
-    public static boolean looksLikeCompany(String rawName) {
+    public static boolean looksLikeCompany(@Nullable String rawName) {
         if (rawName == null) {
             return false;
         }

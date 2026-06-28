@@ -2,6 +2,7 @@ package net.earelin.mercator.domain.parse;
 
 import static java.util.Map.entry;
 
+import io.micronaut.core.annotation.Nullable;
 import java.util.Map;
 import java.util.Optional;
 
@@ -39,7 +40,7 @@ public final class ActDictionary {
     }
 
     /** The canonical act type for {@code keyword}, or empty if it is not catalogued. */
-    public static Optional<ActType> lookup(String keyword) {
+    public static Optional<ActType> lookup(@Nullable String keyword) {
         if (keyword == null) {
             return Optional.empty();
         }

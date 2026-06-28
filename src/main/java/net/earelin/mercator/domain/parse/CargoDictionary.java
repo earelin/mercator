@@ -4,8 +4,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import io.micronaut.core.annotation.Nullable;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -17,7 +19,7 @@ import java.util.regex.Pattern;
 
 /**
  * Resolves a BORME cargo label (the text before the {@code :} in a cargo act) to its canonical
- * {@link Cargo}. Matching is lowercase and layered: an exact literal, then a regex whose digit runs
+ * {@link Cargo}. Matching is lowercase, accent-insensitive and layered: an exact literal, then a regex whose digit runs
  * are generalised (so {@code Vocal 3} matches even though only {@code Vocal 1}/{@code Vocal 2} are
  * catalogued), then a head-word fallback that maps an unmatched label's first word to its base
  * cargo ({@code Vocal Comisión Z} &rarr; {@link Cargo#VOCAL}).
@@ -35,7 +37,7 @@ public final class CargoDictionary {
     }
 
     /** The canonical cargo for {@code label}, or empty if neither a rule nor its head word matches. */
-    public static Optional<Cargo> lookup(String label) {
+    public static Optional<Cargo> lookup(@Nullable String label) {
         if (label == null) {
             return Optional.empty();
         }
@@ -56,7 +58,8 @@ public final class CargoDictionary {
     }
 
     private static String normalise(String label) {
-        return label.strip().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+        String unaccented = Normalizer.normalize(label, Normalizer.Form.NFKD).replaceAll("\\p{M}+", "");
+        return unaccented.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ").strip();
     }
 
     private static String headWord(String normalised) {
@@ -78,8 +81,11 @@ public final class CargoDictionary {
                 }
                 int firstTab = line.indexOf('\t');
                 int secondTab = line.indexOf('\t', firstTab + 1);
+                if (secondTab < 0) {
+                    throw new IllegalStateException("malformed rule in " + RESOURCE + ": " + line);
+                }
                 String key = line.substring(firstTab + 1, secondTab);
-                Cargo cargo = Cargo.valueOf(line.substring(secondTab + 1));
+                Cargo cargo = Cargo.valueOf(line.substring(secondTab + 1).strip());
                 switch (line.charAt(0)) {
                     case 'L' -> literal.put(key, cargo);
                     case 'R' -> patterns.add(new Rule(Pattern.compile(key), cargo));

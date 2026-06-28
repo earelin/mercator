@@ -26,6 +26,12 @@ class CargoDictionaryTest {
     }
 
     @Test
+    void matches_accent_insensitively() {
+        assertThat(CargoDictionary.lookup("Socio único")).contains(Cargo.SOCIO_UNICO);
+        assertThat(CargoDictionary.lookup("SOCIO UNICO")).contains(Cargo.SOCIO_UNICO);
+    }
+
+    @Test
     void generalises_numbered_ordinals_including_unseen_ones() {
         assertThat(CargoDictionary.lookup("Vocal")).contains(Cargo.VOCAL);
         assertThat(CargoDictionary.lookup("Vocal 1")).contains(Cargo.VOCAL);

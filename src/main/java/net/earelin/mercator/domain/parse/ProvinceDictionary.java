@@ -2,10 +2,12 @@ package net.earelin.mercator.domain.parse;
 
 import static java.util.Map.entry;
 
+import io.micronaut.core.annotation.Nullable;
 import java.text.Normalizer;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Resolves a province name from a document's province block to its two-digit {@code province.code}
@@ -81,11 +83,18 @@ public final class ProvinceDictionary {
         entry("ZAMORA", "49"),
         entry("ZARAGOZA", "50"));
 
+    private static final Set<String> CODES = Set.copyOf(CODE_BY_NAME.values());
+
     private ProvinceDictionary() {
     }
 
+    /** The distinct province codes this dictionary resolves to (the {@code province} seed). */
+    public static Set<String> codes() {
+        return CODES;
+    }
+
     /** The two-digit province code for {@code name}, or empty if it is not recognised. */
-    public static Optional<String> codeForName(String name) {
+    public static Optional<String> codeForName(@Nullable String name) {
         if (name == null) {
             return Optional.empty();
         }
