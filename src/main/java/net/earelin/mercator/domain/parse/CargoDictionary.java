@@ -52,13 +52,16 @@ public final class CargoDictionary {
                 return Optional.of(rule.cargo());
             }
         }
-        int space = normalised.indexOf(' ');
-        String head = space < 0 ? normalised : normalised.substring(0, space);
-        return Optional.ofNullable(RULES.head().get(head));
+        return Optional.ofNullable(RULES.head().get(headWord(normalised)));
     }
 
     private static String normalise(String label) {
         return label.strip().toLowerCase(Locale.ROOT).replaceAll("\\s+", " ");
+    }
+
+    private static String headWord(String normalised) {
+        int space = normalised.indexOf(' ');
+        return space < 0 ? normalised : normalised.substring(0, space);
     }
 
     private static Rules load() {

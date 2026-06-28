@@ -22,8 +22,9 @@ public final class LegalSuffixes {
         "S.COM.P.A.", "SCP", "SICAV", "SL", "SLL", "SLLP", "SLNE", "SLP", "SLU", "SME", "SRL",
         "SRLL", "SRLP", "BVBA", "BV", "NV", "LTD");
 
-    private static final List<String> BY_LENGTH_DESC = FORMS.stream()
-        .sorted(Comparator.comparingInt((String form) -> canon(form).length()).reversed())
+    private static final List<Suffix> BY_LENGTH_DESC = FORMS.stream()
+        .map(form -> new Suffix(form, canon(form)))
+        .sorted(Comparator.comparingInt((Suffix suffix) -> suffix.canon().length()).reversed())
         .toList();
 
     private LegalSuffixes() {
@@ -40,9 +41,9 @@ public final class LegalSuffixes {
             return Optional.empty();
         }
         String canonName = canon(rawName);
-        for (String form : BY_LENGTH_DESC) {
-            if (canonName.endsWith(" " + canon(form))) {
-                return Optional.of(form);
+        for (Suffix suffix : BY_LENGTH_DESC) {
+            if (canonName.endsWith(" " + suffix.canon())) {
+                return Optional.of(suffix.form());
             }
         }
         return Optional.empty();
@@ -58,5 +59,8 @@ public final class LegalSuffixes {
 
     private static String canon(String value) {
         return value.toUpperCase(Locale.ROOT).replace(".", "").replaceAll("\\s+", " ").strip();
+    }
+
+    private record Suffix(String form, String canon) {
     }
 }
