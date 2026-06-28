@@ -114,6 +114,36 @@ testing {
                 testTask.configure { shouldRunAfter(tasks.named("test")) }
             }
         }
+
+        // A separate `acceptance` source set (src/acceptance/java) holds the black-box end-to-end
+        // tests: they build the production Docker image, stand up the whole stack (the app image +
+        // a Postgres) with Docker Compose via Testcontainers, and drive the running container's
+        // REST API over the network with REST Assured. Unlike `integration` these do NOT touch the
+        // production classes — the application is opaque, exercised only through HTTP. The suite is
+        // wired into neither `check` nor `build`; it needs Docker (the daemon plus a freshly built
+        // image) and is run on demand with `./gradlew acceptance`.
+        val acceptance by registering(JvmTestSuite::class) {
+            useJUnitJupiter(libs.versions.junit.jupiter)
+            dependencies {
+                // Self-contained black-box deps: REST Assured drives the container's HTTP API,
+                // Testcontainers' Compose module owns the stack lifecycle, AssertJ for assertions.
+                // Deliberately NOT extending the `test` configurations (unlike `integration`): that
+                // would pull in the Micronaut platform BOM, which force-upgrades testcontainers and
+                // rest-assured past the versions pinned in the catalog. The acceptance suite has no
+                // Micronaut on its classpath, so it stays isolated and the pinned versions hold.
+                implementation(libs.assertj.core)
+                implementation(libs.rest.assured)
+                implementation(libs.testcontainers)
+                runtimeOnly(libs.logback.classic)
+            }
+            targets.configureEach {
+                testTask.configure {
+                    // The stack runs the production image, so build it before the tests boot Compose.
+                    dependsOn(tasks.named("dockerBuild"))
+                    shouldRunAfter(tasks.named("test"), tasks.named("integration"))
+                }
+            }
+        }
     }
 }
 
@@ -126,6 +156,12 @@ configurations {
     named("integrationRuntimeOnly") { extendsFrom(configurations.testRuntimeOnly.get()) }
     named("integrationCompileOnly") { extendsFrom(configurations.testCompileOnly.get()) }
     named("integrationAnnotationProcessor") { extendsFrom(configurations.testAnnotationProcessor.get()) }
+}
+
+// The acceptance stack pulls the application image by a fixed tag (see docker/acceptance/compose.yaml),
+// so pin `dockerBuild`'s output to that name instead of the default `<project>:<version>`.
+tasks.named<com.bmuschko.gradle.docker.tasks.image.DockerBuildImage>("dockerBuild") {
+    images = listOf("mercator:acceptance")
 }
 
 checkstyle {

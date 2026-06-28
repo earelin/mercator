@@ -1,0 +1,15 @@
+{
+  "//": "EXAMPLE stub — delete or replace once the ingestion engine's real BORME/BOE URL shapes land.",
+  "//purpose": "Shows the pattern: match a fetch the app makes and return a canned body, so the acceptance run is deterministic and offline.",
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/borme/dias/.*"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/xml; charset=UTF-8"
+    },
+    "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><sumario><meta><pub>BORME</pub></meta></sumario>"
+  }
+}

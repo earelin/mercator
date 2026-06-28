@@ -1,0 +1,67 @@
+# Acceptance stack: a throwaway Postgres, a WireMock simulating the external BORME/BOE HTTP services,
+# and the production application image, wired together so the acceptance suite can drive the running
+# container's REST API. Brought up and torn down by Testcontainers' ComposeContainer (see
+# src/acceptance), not meant for manual `docker compose up`.
+#
+# The application image sits behind the `app` compose profile, so the file serves two shapes:
+#   docker compose -f docker/acceptance/compose.yaml up                 # only the backing services
+#   docker compose -f docker/acceptance/compose.yaml --profile app up   # full stack (db + wiremock + app)
+# The acceptance suite activates the profile via COMPOSE_PROFILES.
+#
+# Ports are only `expose`d (not published): Testcontainers maps them to random host ports through an
+# ambassador, so parallel runs never clash. The app image defaults to the tag produced by
+# `./gradlew dockerBuild` (overridable via MERCATOR_IMAGE for, e.g., a CI-built image).
+name: mercator-acceptance
+
+services:
+  db:
+    image: postgres:18.4
+    environment:
+      POSTGRES_DB: mercator
+      POSTGRES_USER: mercator
+      POSTGRES_PASSWORD: change_me
+    # Flyway's baseline migration creates the required extensions (pg_trgm, fuzzystrmatch,
+    # unaccent), so no init.sql seeding is needed for the acceptance run.
+    expose:
+      - "5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U mercator -d mercator" ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  wiremock:
+    image: wiremock/wiremock:3.13.2
+    # Stands in for the external BORME/BOE HTTP services so the acceptance run never touches the real
+    # gazette: deterministic responses, no network, no politeness concerns. Stub mappings + response
+    # bodies are mounted read-only from docker/acceptance/wiremock (add `mappings/*.json` to simulate
+    # documents). --verbose surfaces unmatched requests in the container log when a stub is missing.
+    command: [ "--verbose", "--disable-banner" ]
+    volumes:
+      - ./wiremock:/home/wiremock:ro
+    expose:
+      - "8080"
+
+  app:
+    image: ${MERCATOR_IMAGE:-mercator:acceptance}
+    profiles:
+      - app
+    depends_on:
+      db:
+        condition: service_healthy
+      wiremock:
+        condition: service_started
+    environment:
+      # Run the deployed `prod` profile (fail-closed: no fallback secrets) against the stack's db.
+      MICRONAUT_ENVIRONMENTS: prod
+      JDBC_URL: jdbc:postgresql://db:5432/mercator
+      DB_USER: mercator
+      DB_PASSWORD: change_me
+      # Point the BORME/BOE fetch layer at WireMock instead of the real gazette. Forward-looking:
+      # the ingestion engine that builds the document URLs is not built yet, so this base-URL seam is
+      # wired here ready for it to bind once it lands (see ADR-0018; BoeSourceConfig).
+      MERCATOR_SOURCE_BOE_BASE_URL: http://wiremock:8080
+      # Open the gated historical-import endpoint so the acceptance tests have a live route to drive.
+      MERCATOR_IMPORTS_HISTORICAL_ENABLED: "true"
+    expose:
+      - "8080"
