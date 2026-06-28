@@ -1,5 +1,6 @@
 package net.earelin.mercator.domain.source;
 
+import io.micronaut.core.annotation.Nullable;
 import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -47,7 +48,7 @@ public final class XmlDocumentParser {
      * @param charset    the charset the body was decoded with
      */
     public record ParsedXml(
-            DocumentMetadata metadata,
+            @Nullable DocumentMetadata metadata,
             List<Paragraph> paragraphs,
             String rawBody,
             Charset charset) {
@@ -142,7 +143,7 @@ public final class XmlDocumentParser {
         return paragraphs;
     }
 
-    private static ParagraphClass paragraphClass(String cssClass) {
+    private static @Nullable ParagraphClass paragraphClass(String cssClass) {
         if (cssClass == null) {
             return null;
         }
@@ -153,7 +154,7 @@ public final class XmlDocumentParser {
         };
     }
 
-    private static Integer parsePages(Element metadatos) {
+    private static @Nullable Integer parsePages(Element metadatos) {
         Integer explicit = parseInt(childText(metadatos, "numero_paginas"));
         if (explicit != null) {
             return explicit;
@@ -166,7 +167,7 @@ public final class XmlDocumentParser {
         return null;
     }
 
-    private static LocalDate parseDate(String value) {
+    private static @Nullable LocalDate parseDate(@Nullable String value) {
         if (value == null || value.isBlank()) {
             return null;
         }
@@ -185,7 +186,7 @@ public final class XmlDocumentParser {
         }
     }
 
-    private static URI parseUri(String value) {
+    private static @Nullable URI parseUri(@Nullable String value) {
         if (value == null || value.isBlank()) {
             return null;
         }
@@ -196,7 +197,7 @@ public final class XmlDocumentParser {
         }
     }
 
-    private static Integer parseInt(String value) {
+    private static @Nullable Integer parseInt(@Nullable String value) {
         if (value == null || value.isBlank()) {
             return null;
         }
@@ -207,7 +208,7 @@ public final class XmlDocumentParser {
         }
     }
 
-    private static String childText(Element parent, String tagName) {
+    private static @Nullable String childText(Element parent, String tagName) {
         Element child = firstChildElement(parent, tagName);
         if (child == null) {
             return null;
@@ -216,7 +217,7 @@ public final class XmlDocumentParser {
         return text == null || text.isBlank() ? null : text.strip();
     }
 
-    private static Element firstChildElement(Element parent, String tagName) {
+    private static @Nullable Element firstChildElement(Element parent, String tagName) {
         NodeList children = parent.getChildNodes();
         for (int i = 0; i < children.getLength(); i++) {
             Node node = children.item(i);

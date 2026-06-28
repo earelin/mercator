@@ -10,6 +10,12 @@ jakarta-inject = "2.0.1"
 checkstyle     = "13.4.2"
 pmd            = "7.24.0"
 cpd-plugin     = "3.5"
+errorprone     = "2.50.0"
+errorprone-plugin = "5.1.0"
+nullaway       = "0.13.7"
+spotbugs-tool  = "4.10.2"
+spotbugs-plugin = "6.5.8"
+findsecbugs    = "1.14.0"
 assertj        = "3.27.7"
 assertj-db     = "3.0.2"
 mockito        = "5.23.0"
@@ -34,7 +40,12 @@ mockito-junit-jupiter   = { module = "org.mockito:mockito-junit-jupiter",       
 testcontainers-postgresql = { module = "org.testcontainers:postgresql",               version.ref = "testcontainers" }
 testcontainers-junit    = { module = "org.testcontainers:junit-jupiter",              version.ref = "testcontainers" }
 archunit                = { module = "com.tngtech.archunit:archunit",                 version.ref = "archunit" }
+errorprone-core         = { module = "com.google.errorprone:error_prone_core",         version.ref = "errorprone" }
+nullaway                = { module = "com.uber.nullaway:nullaway",                      version.ref = "nullaway" }
+findsecbugs-plugin      = { module = "com.h3xstream.findsecbugs:findsecbugs-plugin",    version.ref = "findsecbugs" }
 
 [plugins]
 micronaut-application = { id = "io.micronaut.application", version = "5.0.1" }
 cpd                   = { id = "de.aaschmid.cpd",          version.ref = "cpd-plugin" }
+errorprone            = { id = "net.ltgt.errorprone",      version.ref = "errorprone-plugin" }
+spotbugs              = { id = "com.github.spotbugs",      version.ref = "spotbugs-plugin" }

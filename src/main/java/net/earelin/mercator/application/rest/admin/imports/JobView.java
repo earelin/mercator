@@ -1,5 +1,6 @@
 package net.earelin.mercator.application.rest.admin.imports;
 
+import io.micronaut.core.annotation.Nullable;
 import io.micronaut.serde.annotation.Serdeable;
 import net.earelin.mercator.domain.ingest.ImportJob;
 
@@ -10,7 +11,7 @@ public record JobView(
         String kind,
         String target,
         String status,
-        String detail,
+        @Nullable String detail,
         String statusUrl) {
 
     static JobView of(ImportJob job) {

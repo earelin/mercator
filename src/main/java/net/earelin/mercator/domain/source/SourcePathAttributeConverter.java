@@ -1,5 +1,6 @@
 package net.earelin.mercator.domain.source;
 
+import io.micronaut.core.annotation.Nullable;
 import io.micronaut.core.convert.ConversionContext;
 import io.micronaut.data.model.runtime.convert.AttributeConverter;
 import jakarta.inject.Singleton;
@@ -15,12 +16,12 @@ import jakarta.inject.Singleton;
 public final class SourcePathAttributeConverter implements AttributeConverter<SourcePath, String> {
 
     @Override
-    public String convertToPersistedValue(SourcePath entityValue, ConversionContext context) {
+    public @Nullable String convertToPersistedValue(SourcePath entityValue, ConversionContext context) {
         return entityValue == null ? null : entityValue.dbValue();
     }
 
     @Override
-    public SourcePath convertToEntityValue(String persistedValue, ConversionContext context) {
+    public @Nullable SourcePath convertToEntityValue(String persistedValue, ConversionContext context) {
         if (persistedValue == null) {
             return null;
         }

@@ -19,7 +19,7 @@ the constraints that govern it.
 ./gradlew test           # run the fast unit tests only
 ./gradlew integration    # run the integration tests (controllers + adapters; needs Docker)
 ./gradlew run            # start the Micronaut server locally
-./gradlew check          # unit test + Checkstyle + CPD (no Docker; excludes integration)
+./gradlew check          # unit test + Checkstyle + PMD + CPD + Error Prone/NullAway + SpotBugs/FindSecBugs (no Docker; excludes integration)
 ```
 
 The database must be running (`docker compose up -d`) before starting the server. The
@@ -35,10 +35,15 @@ Two helper scripts live in `scripts/` (run from anywhere — they `cd` to the re
   every Markdown file (markdownlint-cli2 formatting, lychee internal + external links/anchors,
   `mmdc` Mermaid syntax), lints Docker Compose files (`dclint` via `npx`), runs `./gradlew check`
   and `./gradlew build`, lints the Flyway SQL (`sqlfluff` over `src/main/resources/db/migration`),
-  and validates the OpenAPI contract for structure + security (`spectral` with `spectral:oas` +
-  the OWASP ruleset over `docs/specs/api.openapi.yaml`). Skip external link checks with
-  `CHECK_EXTERNAL=0`. Requires markdownlint-cli2, lychee, mmdc (+ a system Chrome/Chromium),
-  npx, sqlfluff installed locally.
+  validates the OpenAPI contract for structure + security (`spectral` with `spectral:oas` +
+  the OWASP ruleset over `docs/specs/api.openapi.yaml`), and runs a **SAST security scan**
+  (`opengrep`, the open-source Semgrep fork) over the production sources `src/main` with the
+  Semgrep-compatible `p/java` + `p/secrets` + `p/security-audit` rulesets — scoped to `src/main`
+  like SpotBugs, since test fixtures legitimately do "unsafe" things. Finally it lints the GitHub
+  Actions workflows (`actionlint`, which also shellchecks the `run:` scripts when `shellcheck` is on
+  PATH). Skip external link checks with `CHECK_EXTERNAL=0`. Requires markdownlint-cli2, lychee, mmdc
+  (+ a system Chrome/Chromium), npx, sqlfluff, opengrep, and actionlint installed locally (the
+  opengrep ruleset fetch needs network on first run, then caches).
 - `scripts/api-conformance.sh` — the heavyweight **dynamic** API check, deliberately kept out of
   `ci.sh`. It drives a *running* server with property-based cases generated from the OpenAPI doc
   (`schemathesis`) and asserts responses conform — drift (status code / schema / content type /
@@ -64,8 +69,19 @@ Two helper scripts live in `scripts/` (run from anywhere — they `cd` to the re
   the JDBC adapters against a real Postgres (Testcontainers), and the HTTP transport over a socket.
   Run them with `./gradlew integration` (needs Docker); they are deliberately **not** part of
   `check`.
-- `./gradlew check` runs Checkstyle (shared config in `config/checkstyle/`) and CPD
-  (duplication); keep both green.
+- `./gradlew check` runs Checkstyle (shared config in `config/checkstyle/`), PMD (curated ruleset
+  in `config/pmd/`) and CPD (duplication); keep all three green. It also compiles with **Error Prone**
+  (javac bug-pattern checks) and **NullAway** (nullness analysis, configured inline in
+  `build.gradle.kts`): NullAway runs on the production `main` sources only, treats the
+  `net.earelin.mercator` packages as `@NonNull` by default, and fails the build on an unannotated
+  nullable dereference — annotate genuinely-nullable record components, params and returns with the
+  Micronaut `io.micronaut.core.annotation.@Nullable` already used across the codebase.
+- `./gradlew check` also runs **SpotBugs** with the **Find Security Bugs** detector pack (bytecode
+  analysis: bugs + security patterns like injection, weak crypto, SSRF, XXE). Like NullAway it runs
+  on the production `main` sources only (test/integration fixtures trip the security detectors with
+  deliberately "unsafe" code). The exclude filter lives in `config/spotbugs/exclude.xml` — it drops
+  Micronaut's generated classes plus a few scoped, justified false positives / accepted trade-offs;
+  prefer fixing a finding over widening the filter, and keep each filter entry commented.
 
 ## What Mercator is
 
