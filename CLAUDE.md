@@ -104,12 +104,18 @@ The authoritative design lives in `docs/` (read before writing code):
 
 - `docs/specs/` — **what** the system does.
 - `docs/features/` — **how** each spec is implemented, plus the implementation-issue backlog.
-- `docs/architecture/` — **why** (Architecture Decision Records).
+- `docs/architecture/` — **why** (Architecture Decision Records). Start at
+  **[`docs/architecture/README.md`](docs/architecture/README.md)** — besides indexing the ADRs it
+  carries a synthesised **current-state architecture overview** (the recommended entry point for the
+  system's shape and the rationale behind it).
 
 See **[`docs/CLAUDE.md`](docs/CLAUDE.md)** for how the docs are organised, the doc-authoring
 conventions, and the ADR lifecycle/approval rules.
 
 ## Planned tech stack (per the ADRs)
+
+For the full rationale and how these pieces fit together, see the architecture overview in
+[`docs/architecture/README.md`](docs/architecture/README.md).
 
 - **PostgreSQL 18** is the single datastore (`pg_trgm`, `fuzzystrmatch`, `unaccent`). No
   second datastore initially. See ADR-0004.
