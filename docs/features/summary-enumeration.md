@@ -94,16 +94,22 @@ flowchart LR
 
 ## Implementation issues
 
-- [ ] Core-owned summary-source **port** returning the day's `DocumentDescriptor` list (per
+- [x] Core-owned summary-source **port** returning the day's `DocumentDescriptor` list (per
       [ADR-0014](../architecture/0014-hexagonal-architecture.md)), reusing the existing
       `BoeHttpClient` for the GET — no second HTTP path.
-- [ ] Summary REST client: fetch `sumario/{AAAAMMDD}` with `Accept: application/xml`, handle
+      *(`SummarySource` → `SummaryEnumerationService`, `domain.source`.)*
+- [x] Summary REST client: fetch `sumario/{AAAAMMDD}` with `Accept: application/xml`, handle
       404/5xx/429 via the **single shared rate limiter/retry policy** (shared with
       [document-fetch](document-fetch.md), not a second limiter).
-- [ ] Summary parser (XML) → typed document descriptors for Sección A items (carrying `titulo`
-      as the raw `province`).
-- [ ] Date iterator over an inclusive range with non-publication/empty-day skipping (stateless,
+      *(`SummaryEnumerationService` builds the URI and calls the shared `BoeHttpClient`; 404 →
+      `NotPublished`, give-up → `Failed`.)*
+- [x] Summary parser (XML) → typed document descriptors for Sección A items (carrying `titulo`
+      as the raw `province`). *(`SummaryXmlParser`; B/C skipped.)*
+- [x] Date iterator over an inclusive range with non-publication/empty-day skipping (stateless,
       nothing persisted); resolve an open-ended "today" in `Europe/Madrid`.
-- [ ] Capture per-item `url_xml`/`url_html`/`url_pdf`; fallback constructor `xml.php?id={id}` if missing.
-- [ ] Unit tests: recorded summary fixtures (a publication day + a holiday) **and** a
+      *(`SummarySource.enumerate(start, end)` lazy stream + `enumerateToToday(start)`.)*
+- [x] Capture per-item `url_xml`/`url_html`/`url_pdf`; fallback constructor `xml.php?id={id}` if missing.
+- [x] Unit tests: recorded summary fixtures (a publication day + a holiday) **and** a
       stubbed-client range-iteration test asserting no gaps/duplicates across an arbitrary span.
+      *(`SummaryXmlParserTest`, `SummaryEnumerationServiceTest`; plus a WireMock-backed
+      `SummaryEnumerationClientIT` for the HTTP client over a socket.)*

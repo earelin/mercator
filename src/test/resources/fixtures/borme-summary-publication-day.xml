@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<response>
+  <status>
+    <code>200</code>
+    <text>OK</text>
+  </status>
+  <data>
+    <sumario>
+      <metadatos>
+        <publicacion>BORME</publicacion>
+        <fecha_publicacion>20260609</fecha_publicacion>
+      </metadatos>
+      <diario numero="9">
+        <sumario_diario>
+          <identificador>BORME-S-20260609</identificador>
+          <url_pdf szBytes="48210" szKB="47">https://www.boe.es/boe/dias/2026/06/09/pdfs/BORME-S-20260609.pdf</url_pdf>
+        </sumario_diario>
+        <seccion codigo="A" nombre="Empresarios. Actos inscritos">
+          <item>
+            <identificador>BORME-A-2026-9-01</identificador>
+            <titulo>ARAÑÓN</titulo>
+            <url_pdf szBytes="12345" szKB="12" pagina_inicial="1" pagina_final="3">https://www.boe.es/borme/dias/2026/06/09/pdfs/BORME-A-2026-9-01.pdf</url_pdf>
+            <url_xml>https://www.boe.es/diario_borme/xml.php?id=BORME-A-2026-9-01</url_xml>
+            <url_html>https://www.boe.es/diario_borme/txt.php?id=BORME-A-2026-9-01</url_html>
+          </item>
+          <item>
+            <identificador>BORME-A-2026-9-08</identificador>
+            <titulo>BARCELONA</titulo>
+            <url_pdf szBytes="998877" szKB="975" pagina_inicial="4" pagina_final="120">https://www.boe.es/borme/dias/2026/06/09/pdfs/BORME-A-2026-9-08.pdf</url_pdf>
+            <url_xml>https://www.boe.es/diario_borme/xml.php?id=BORME-A-2026-9-08</url_xml>
+            <url_html>https://www.boe.es/diario_borme/txt.php?id=BORME-A-2026-9-08</url_html>
+          </item>
+          <item>
+            <identificador>BORME-A-2026-9-28</identificador>
+            <titulo>MÁLAGA</titulo>
+            <url_pdf szBytes="55012" szKB="54" pagina_inicial="121" pagina_final="140">https://www.boe.es/borme/dias/2026/06/09/pdfs/BORME-A-2026-9-28.pdf</url_pdf>
+            <url_xml>https://www.boe.es/diario_borme/xml.php?id=BORME-A-2026-9-28</url_xml>
+            <url_html>https://www.boe.es/diario_borme/txt.php?id=BORME-A-2026-9-28</url_html>
+          </item>
+        </seccion>
+        <seccion codigo="B" nombre="Empresarios. Otros actos publicados en el Registro Mercantil">
+          <item>
+            <identificador>BORME-B-2026-9-08</identificador>
+            <titulo>BARCELONA</titulo>
+            <url_pdf szBytes="2048" szKB="2">https://www.boe.es/borme/dias/2026/06/09/pdfs/BORME-B-2026-9-08.pdf</url_pdf>
+            <url_xml>https://www.boe.es/diario_borme/xml.php?id=BORME-B-2026-9-08</url_xml>
+            <url_html>https://www.boe.es/diario_borme/txt.php?id=BORME-B-2026-9-08</url_html>
+          </item>
+        </seccion>
+        <seccion codigo="C" nombre="Anuncios y avisos legales">
+          <apartado codigo="010" nombre="CONVOCATORIAS DE JUNTAS">
+            <item>
+              <identificador>BORME-C-2026-4567</identificador>
+              <titulo>EJEMPLO SOCIEDAD ANÓNIMA</titulo>
+              <url_pdf szBytes="1024" szKB="1">https://www.boe.es/borme/dias/2026/06/09/pdfs/BORME-C-2026-4567.pdf</url_pdf>
+              <url_xml>https://www.boe.es/diario_borme/xml.php?id=BORME-C-2026-4567</url_xml>
+              <url_html>https://www.boe.es/diario_borme/txt.php?id=BORME-C-2026-4567</url_html>
+            </item>
+          </apartado>
+        </seccion>
+      </diario>
+    </sumario>
+  </data>
+</response>

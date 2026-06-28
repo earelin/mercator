@@ -55,13 +55,14 @@
   </Match>
 
   <!--
-    False positive: the DocumentBuilderFactory IS hardened against XXE in the secureFactory() helper
-    (disallow-doctype-decl=true — the OWASP-recommended primary defence — plus FEATURE_SECURE_PROCESSING
-    and empty ACCESS_EXTERNAL_DTD/SCHEMA). Find Security Bugs reports it only because it does not follow
-    the hardening into that helper method.
+    False positive: the DocumentBuilderFactory IS hardened against XXE in the XmlSupport.secureFactory()
+    helper (disallow-doctype-decl=true — the OWASP-recommended primary defence — plus
+    FEATURE_SECURE_PROCESSING and empty ACCESS_EXTERNAL_DTD/SCHEMA). Find Security Bugs reports it only
+    because it does not follow the hardening into that helper method. XmlSupport.parse is the single
+    shared parse used by both the per-document and summary XML parsers.
   -->
   <Match>
     <Bug pattern="XXE_DOCUMENT"/>
-    <Class name="net.earelin.mercator.domain.source.XmlDocumentParser"/>
+    <Class name="net.earelin.mercator.domain.source.XmlSupport"/>
   </Match>
 </FindBugsFilter>

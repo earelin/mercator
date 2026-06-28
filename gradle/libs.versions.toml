@@ -22,6 +22,7 @@ slf4j             = "2.0.18"
 spotbugs-plugin   = "6.5.8"
 spotbugs-tool     = "4.10.2"
 testcontainers    = "1.21.4"
+wiremock          = "3.13.1"
 
 [libraries]
 archunit                  = { module = "com.tngtech.archunit:archunit",                 version.ref = "archunit" }
@@ -46,6 +47,7 @@ slf4j-api                 = { module = "org.slf4j:slf4j-api",                   
 testcontainers            = { module = "org.testcontainers:testcontainers",             version.ref = "testcontainers" }
 testcontainers-junit      = { module = "org.testcontainers:junit-jupiter",              version.ref = "testcontainers" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql",               version.ref = "testcontainers" }
+wiremock                  = { module = "org.wiremock:wiremock-standalone",               version.ref = "wiremock" }
 
 [plugins]
 cpd                   = { id = "de.aaschmid.cpd",          version.ref = "cpd-plugin" }
