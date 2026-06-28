@@ -53,6 +53,15 @@ Two helper scripts live in `scripts/` (run from anywhere — they `cd` to the re
   `http://localhost:8080`), `MERCATOR_API_KEY` (sent as `X-API-Key`), and
   `SCHEMATHESIS_MAX_EXAMPLES` (default 25 per operation). Requires `schemathesis` (`st`) installed.
 
+## Code style
+
+- **Comment sparingly.** Write self-explanatory code (clear names, small methods) and let it carry
+  the intent. Add a comment only when it earns its place: a non-obvious *why* (a rationale, a
+  workaround, a spec/ADR reference, a subtle invariant). Do **not** narrate *what* the code already
+  says, restate the method or field name, or leave section-divider banners, changelog notes, or
+  TODOs-as-documentation. Prefer deleting a stale comment over updating it. Match the comment density
+  of the surrounding code — when in doubt, fewer.
+
 ## Testing conventions
 
 - **Prefer stubs over mocks.** Drive behaviour through stubbed inputs and assert on observable
