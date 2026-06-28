@@ -1,7 +1,0 @@
-# Production overrides — no fallback defaults for secrets (ADR-0013: fail-closed).
-# All three must be supplied at runtime or startup will fail.
-datasources:
-  default:
-    url: ${JDBC_URL}
-    username: ${DB_USER}
-    password: ${DB_PASSWORD}
