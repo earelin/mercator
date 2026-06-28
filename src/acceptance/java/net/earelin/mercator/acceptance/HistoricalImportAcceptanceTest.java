@@ -24,16 +24,14 @@ class HistoricalImportAcceptanceTest extends AcceptanceTestSupport {
                 .andReturn();
 
         assertThat(accepted.statusCode()).isEqualTo(202);
-        var acceptedBody = accepted.jsonPath();
-        String jobId = acceptedBody.getString("jobId");
-        assertThat(jobId).isNotBlank();
-        assertThat(acceptedBody.getString("kind")).isEqualTo("BY_DATE");
-        assertThat(acceptedBody.getString("target")).isEqualTo("2009-01-02");
-        String statusUrl = acceptedBody.getString("statusUrl");
-        assertThat(statusUrl).isEqualTo("/admin/imports/" + jobId);
+
+        // Acceptance level: smoke the happy path end-to-end — the deployed container accepts the
+        // request and hands back a pollable status URL that then answers. The exact response-body
+        // contract (jobId/kind/target shapes) is asserted by the integration + conformance suites.
+        String statusUrl = accepted.jsonPath().getString("statusUrl");
+        assertThat(statusUrl).startsWith("/admin/imports/");
 
         var status = given().when().get(statusUrl).andReturn();
-
         assertThat(status.statusCode()).isEqualTo(200);
         assertThat(status.jsonPath().getString("status")).isNotBlank();
     }
