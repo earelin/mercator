@@ -49,7 +49,7 @@ public final class SummaryXmlParser {
      * @throws XmlParseException if the body is not well-formed XML
      */
     public List<DocumentDescriptor> parseSectionA(byte[] body) {
-        Document doc = XmlSupport.parse(body);
+        Document doc = XmlSupport.parse(body, "malformed summary XML");
         Element root = doc.getDocumentElement();
 
         List<DocumentDescriptor> descriptors = new ArrayList<>();

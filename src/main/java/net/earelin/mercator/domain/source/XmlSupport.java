@@ -36,14 +36,16 @@ final class XmlSupport {
     /**
      * Parse {@code body} into a hardened DOM document.
      *
+     * @param context caller-supplied prefix for the failure message, so each parser keeps its own
+     *                error wording (e.g. "malformed per-document XML")
      * @throws XmlParseException if the body is not well-formed XML
      */
-    static Document parse(byte[] body) {
+    static Document parse(byte[] body, String context) {
         try {
             DocumentBuilder builder = secureFactory().newDocumentBuilder();
             return builder.parse(new ByteArrayInputStream(body));
         } catch (Exception e) {
-            throw new XmlParseException("malformed XML: " + e.getMessage(), e);
+            throw new XmlParseException(context + ": " + e.getMessage(), e);
         }
     }
 

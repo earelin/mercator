@@ -57,7 +57,7 @@ public final class XmlDocumentParser {
     public ParsedXml parse(byte[] body) {
         Charset charset = XmlSupport.detectCharset(body);
         String rawBody = new String(body, charset);
-        Document doc = XmlSupport.parse(body);
+        Document doc = XmlSupport.parse(body, "malformed per-document XML");
         Element root = doc.getDocumentElement();
 
         Element metadatos = XmlSupport.firstChildElement(root, "metadatos");

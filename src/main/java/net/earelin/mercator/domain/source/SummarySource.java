@@ -1,6 +1,7 @@
 package net.earelin.mercator.domain.source;
 
 import java.time.LocalDate;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 /**
@@ -37,6 +38,8 @@ public interface SummarySource {
      *         precedes {@code start}
      */
     default Stream<SummaryResult> enumerate(LocalDate start, LocalDate endInclusive) {
+        Objects.requireNonNull(start, "start");
+        Objects.requireNonNull(endInclusive, "endInclusive");
         if (endInclusive.isBefore(start)) {
             return Stream.empty();
         }
