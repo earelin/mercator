@@ -6,6 +6,8 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.xml.XMLConstants;
@@ -74,6 +76,16 @@ final class XmlSupport {
         factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
         factory.setExpandEntityReferences(false);
         return factory;
+    }
+
+    /** Every descendant element named {@code tagName}, in document order. */
+    static List<Element> elements(Element parent, String tagName) {
+        NodeList nodes = parent.getElementsByTagName(tagName);
+        List<Element> elements = new ArrayList<>(nodes.getLength());
+        for (int i = 0; i < nodes.getLength(); i++) {
+            elements.add((Element) nodes.item(i));
+        }
+        return elements;
     }
 
     /** The first direct child element named {@code tagName}, or {@code null} if there is none. */

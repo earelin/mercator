@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
 
 /**
  * Parses a BOE {@code datosabiertos} summary XML body into the day's Secci&oacute;n A
@@ -54,15 +53,12 @@ public final class SummaryXmlParser {
         Element root = doc.getDocumentElement();
 
         List<DocumentDescriptor> descriptors = new ArrayList<>();
-        NodeList secciones = root.getElementsByTagName("seccion");
-        for (int i = 0; i < secciones.getLength(); i++) {
-            Element seccion = (Element) secciones.item(i);
+        for (Element seccion : XmlSupport.elements(root, "seccion")) {
             if (!SECTION_A.equalsIgnoreCase(seccion.getAttribute("codigo"))) {
                 continue;
             }
-            NodeList items = seccion.getElementsByTagName("item");
-            for (int j = 0; j < items.getLength(); j++) {
-                DocumentDescriptor descriptor = toDescriptor((Element) items.item(j));
+            for (Element item : XmlSupport.elements(seccion, "item")) {
+                DocumentDescriptor descriptor = toDescriptor(item);
                 if (descriptor != null) {
                     descriptors.add(descriptor);
                 }

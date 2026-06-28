@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
 
 /**
  * Parses a per-document BORME XML body ({@code <documento>} with {@code <metadatos>} and a
@@ -82,9 +81,7 @@ public final class XmlDocumentParser {
 
     private static List<Paragraph> parseParagraphs(Element texto) {
         List<Paragraph> paragraphs = new ArrayList<>();
-        NodeList children = texto.getElementsByTagName("p");
-        for (int i = 0; i < children.getLength(); i++) {
-            Element p = (Element) children.item(i);
+        for (Element p : XmlSupport.elements(texto, "p")) {
             ParagraphClass styleClass = paragraphClass(p.getAttribute("class"));
             if (styleClass != null) {
                 paragraphs.add(new Paragraph(styleClass, p.getTextContent().strip()));
