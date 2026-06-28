@@ -82,7 +82,10 @@ flowchart LR
 - [x] Port bormeparser dictionaries (act vocabulary, cargo map, province codes, suffix list) under GPL.
       (`domain.parse`: `ActType`/`ActDictionary`, `Cargo`/`CargoDictionary` + full taxonomy seeded by
       migration V1.1.0, `ProvinceDictionary`, `LegalSuffixes`.)
-- [ ] Company-block builder from XML `articulo`/`parrafo` pairs (+ text/PDF fallback splitter).
+- [x] Company-block builder from XML `articulo`/`parrafo` pairs (+ text/PDF fallback splitter).
+      (`domain.parse`: `CompanyBlock` record + `CompanyBlockSplitter` — XML pairs `articulo` with its
+      following `parrafo`s; TXT/PDF fallback detects header lines via `LegalSuffixes`. Raw header +
+      raw paragraphs only; field parsing/normalisation/act-splitting stay in later issues.)
 - [ ] Company-header field parser: split the `<p class="articulo">` line into optional numeric
       prefix + raw company name + trailing legal-form token; tolerate `NNNNN - NAME SL.` and the
       Barcelona `ACTIVIDAD PRINCIPAL: <CNAE>` framing (canonical legal-form detection stays in
