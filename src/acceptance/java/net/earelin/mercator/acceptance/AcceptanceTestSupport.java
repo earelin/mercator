@@ -40,15 +40,17 @@ abstract class AcceptanceTestSupport {
                                     .withStartupTimeout(Duration.ofMinutes(4)));
 
     /**
-     * Compose variables for the acceptance run: a throwaway db password, {@code DB_PORT=0} and {@code
-     * WIREMOCK_PORT=0} so the db and wiremock take random host ports rather than clashing with a dev
-     * stack on 5432/8090, and the exact image tag Gradle built (else the compose file's default tag).
+     * Compose variables for the acceptance run: a throwaway db password, {@code DB_PORT=0} / {@code
+     * WIREMOCK_PORT=0} / {@code APP_PORT=0} so the services take random host ports rather than clashing
+     * with a dev stack on 5432/8090/8080, and the exact image tag Gradle built (else the compose file's
+     * default tag). The tests reach the app through Testcontainers' ambassador, not the published port.
      */
     private static Map<String, String> stackEnv() {
         var env = new HashMap<String, String>();
         env.put("POSTGRES_PASSWORD", "change_me");
         env.put("DB_PORT", "0");
         env.put("WIREMOCK_PORT", "0");
+        env.put("APP_PORT", "0");
         String image = System.getProperty("mercator.acceptance.image");
         if (image != null && !image.isBlank()) {
             env.put("MERCATOR_IMAGE", image);

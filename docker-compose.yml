@@ -17,8 +17,8 @@ services:
       # seam is wired ready for it (ADR-0018) — nothing reads it today.
       MERCATOR_SOURCE_BOE_BASE_URL: http://wiremock:8080
       MERCATOR_IMPORTS_HISTORICAL_ENABLED: "true"
-    expose:
-      - '8080'
+    ports:
+      - '127.0.0.1:${APP_PORT:-8080}:8080'
     profiles: [ app ]
 
   db:
