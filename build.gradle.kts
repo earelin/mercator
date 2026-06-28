@@ -141,6 +141,10 @@ testing {
                     // The stack runs the production image, so build it before the tests boot Compose.
                     dependsOn(tasks.named("dockerBuild"))
                     shouldRunAfter(tasks.named("test"), tasks.named("integration"))
+                    // Hand the tests the tag `dockerBuild` produced (its default, `<project>:latest`)
+                    // so the Compose stack pulls exactly that image — without repurposing the global
+                    // default tag. The test forwards this to Compose as MERCATOR_IMAGE.
+                    systemProperty("mercator.acceptance.image", "${project.name}:latest")
                 }
             }
         }
@@ -156,12 +160,6 @@ configurations {
     named("integrationRuntimeOnly") { extendsFrom(configurations.testRuntimeOnly.get()) }
     named("integrationCompileOnly") { extendsFrom(configurations.testCompileOnly.get()) }
     named("integrationAnnotationProcessor") { extendsFrom(configurations.testAnnotationProcessor.get()) }
-}
-
-// The acceptance stack pulls the application image by a fixed tag (see docker/acceptance/compose.yaml),
-// so pin `dockerBuild`'s output to that name instead of the default `<project>:<version>`.
-tasks.named<com.bmuschko.gradle.docker.tasks.image.DockerBuildImage>("dockerBuild") {
-    images = listOf("mercator:acceptance")
 }
 
 checkstyle {

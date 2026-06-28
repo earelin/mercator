@@ -3,6 +3,7 @@ package net.earelin.mercator.acceptance;
 import io.restassured.RestAssured;
 import java.io.File;
 import java.time.Duration;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.containers.ComposeContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -29,17 +30,32 @@ abstract class AcceptanceTestSupport {
                     // the default containerised compose runs in an isolated daemon that cannot see it.
                     .withLocalCompose(true)
                     // Activate the `app` compose profile so the application image is launched
-                    // alongside its backing db (the db itself is profile-less and always starts).
+                    // alongside its backing services (the others are profile-less and always start).
                     .withEnv("COMPOSE_PROFILES", "app")
-                    // Ready once the API answers: a GET for a non-existent import job returns a
-                    // definite 404 only when the server is up and routing (connection-refused while
-                    // it boots keeps the strategy polling).
+                    // Point Compose at the exact image `dockerBuild` produced (its default
+                    // `<project>:latest` tag, passed in by the Gradle test task). The compose file
+                    // requires MERCATOR_IMAGE, so a run outside Gradle must set it (system property or
+                    // env) — there is no implicit default image.
+                    .withEnv(appImageEnv())
+                    // Generic liveness/routing probe — NOT proof the import endpoint is mounted: once
+                    // Micronaut is up it returns 404 for any unmatched path, so this only confirms the
+                    // server is serving (connection-refused while it boots keeps the strategy polling).
+                    // The POST tests are what actually assert the gated route is present.
                     .withExposedService(
                             APP_SERVICE,
                             APP_PORT,
                             Wait.forHttp("/admin/imports/__readiness_probe__")
                                     .forStatusCode(404)
                                     .withStartupTimeout(Duration.ofMinutes(4)));
+
+    /**
+     * Maps {@code MERCATOR_IMAGE} to the image tag Gradle built, or an empty map when the system
+     * property is absent (a run outside Gradle, which must then supply MERCATOR_IMAGE itself).
+     */
+    private static Map<String, String> appImageEnv() {
+        String image = System.getProperty("mercator.acceptance.image");
+        return image == null || image.isBlank() ? Map.of() : Map.of("MERCATOR_IMAGE", image);
+    }
 
     static {
         ENVIRONMENT.start();

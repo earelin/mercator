@@ -9,8 +9,9 @@
 # The acceptance suite activates the profile via COMPOSE_PROFILES.
 #
 # Ports are only `expose`d (not published): Testcontainers maps them to random host ports through an
-# ambassador, so parallel runs never clash. The app image defaults to the tag produced by
-# `./gradlew dockerBuild` (overridable via MERCATOR_IMAGE for, e.g., a CI-built image).
+# ambassador, so parallel runs never clash. MERCATOR_IMAGE must name the application image to run:
+# the `acceptance` Gradle task supplies the tag `dockerBuild` produced (`<project>:latest`); for a
+# manual `docker compose` run, set it yourself (e.g. MERCATOR_IMAGE=mercator:latest).
 name: mercator-acceptance
 
 services:
@@ -43,7 +44,7 @@ services:
       - "8080"
 
   app:
-    image: ${MERCATOR_IMAGE:-mercator:acceptance}
+    image: ${MERCATOR_IMAGE:?set MERCATOR_IMAGE to the application image tag (see header)}
     profiles:
       - app
     depends_on:
