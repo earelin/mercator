@@ -2,6 +2,9 @@
 dialect = postgres
 templater = raw
 max_line_length = 120
+# The V1.1.0 cargo-vocabulary seed (~370 rows) exceeds the 20 KB default; lint it rather
+# than silently skip. 0 disables the skip entirely.
+large_file_skip_byte_limit = 0
 
 # LT01: column-type alignment — multiple spaces between name and type are
 #        intentional for readability; single-space enforcement disabled.
