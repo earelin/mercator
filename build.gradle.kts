@@ -36,28 +36,20 @@ application {
 }
 
 dependencies {
-    // Domain/infrastructure libraries (formerly the `shared` module). slf4j is plain
-    // `implementation` now that there is no external library consumer; jsoup/PDFBox back the
-    // document-fetch fallbacks (txt.php HTML, last-resort PDF — ADR-0002, ADR-0012).
+    annotationProcessor("io.micronaut.data:micronaut-data-processor")
+
     implementation(libs.slf4j.api)
     implementation(libs.jsoup)
     implementation(libs.pdfbox)
-    // Vendor-neutral JSR-330 DI annotations (@Singleton/@Inject) for the domain core — depended on
-    // directly so the core compiles against the standard, not transitively via Micronaut
-    // (ADR-0014). Micronaut supplies the implementation that reads them at the boundary.
     implementation(libs.jakarta.inject.api)
 
-    // Micronaut runtime: HTTP API, JSON serialization, Flyway migrations, JDBC/HikariCP.
+    // Micronaut runtime
     implementation("io.micronaut:micronaut-http-server-netty")
     implementation("io.micronaut.serde:micronaut-serde-jackson")
     implementation("io.micronaut.flyway:micronaut-flyway")
     implementation("io.micronaut.sql:micronaut-jdbc-hikari")
-    // Micronaut Data JDBC backs the row-by-row database access (the borme_log adapter today; the
-    // resolution-function calls and daily upserts next). Repositories are compiled ahead-of-time by
-    // micronaut-data-processor — no reflection/runtime proxies. Flyway still owns the schema
-    // (schema-generate is off); the bulk historical-import path stays raw SQL/COPY (ADR-0006).
     implementation("io.micronaut.data:micronaut-data-jdbc")
-    annotationProcessor("io.micronaut.data:micronaut-data-processor")
+
     runtimeOnly(libs.logback.classic)
     runtimeOnly(libs.postgresql)
     runtimeOnly(libs.flyway.core)
@@ -68,19 +60,14 @@ dependencies {
     testImplementation("io.micronaut:micronaut-http-client")
     testImplementation(libs.assertj.core)
     testImplementation(libs.mockito.core)
-    // assertj-db is the standard for database-backed checks (persistence/borme_log tests).
     testImplementation(libs.assertj.db)
-    // ArchUnit enforces the hexagonal layer boundaries (domain / infrastructure / application)
-    // as a plain JUnit test — see LayeredArchitectureTest (ADR-0014).
     testImplementation(libs.archunit)
-    // Testcontainers stands up a real Postgres 18 so the JDBC adapters are exercised against the
-    // actual ON CONFLICT upsert and CHECK constraints. The canonical schema lives in this module
-    // (src/main/resources/db/migration); the tests apply it with Flyway — one source of truth.
     testImplementation(libs.testcontainers.postgresql)
     testImplementation(libs.testcontainers.junit)
     testImplementation(libs.flyway.core)
     testImplementation(libs.flyway.postgresql)
     testImplementation(libs.postgresql)
+
     testRuntimeOnly(libs.junit.platform.launcher)
     testRuntimeOnly(libs.logback.classic)
 }

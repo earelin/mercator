@@ -26,6 +26,27 @@ The database must be running (`docker compose up -d`) before starting the server
 `integration` suite stands up its own Postgres via Testcontainers, so the Docker daemon must be
 available when running it.
 
+## Scripts
+
+Two helper scripts live in `scripts/` (run from anywhere — they `cd` to the repo root):
+
+- `scripts/ci.sh` — the **local CI pipeline**, also wired as a git pre-push hook (see
+  `.githooks/pre-push`; enable with `git config core.hooksPath .githooks`). It statically checks
+  every Markdown file (markdownlint-cli2 formatting, lychee internal + external links/anchors,
+  `mmdc` Mermaid syntax), lints Docker Compose files (`dclint` via `npx`), runs `./gradlew check`
+  and `./gradlew build`, lints the Flyway SQL (`sqlfluff` over `src/main/resources/db/migration`),
+  and validates the OpenAPI contract for structure + security (`spectral` with `spectral:oas` +
+  the OWASP ruleset over `docs/specs/api.openapi.yaml`). Skip external link checks with
+  `CHECK_EXTERNAL=0`. Requires markdownlint-cli2, lychee, mmdc (+ a system Chrome/Chromium),
+  npx, sqlfluff installed locally.
+- `scripts/api-conformance.sh` — the heavyweight **dynamic** API check, deliberately kept out of
+  `ci.sh`. It drives a *running* server with property-based cases generated from the OpenAPI doc
+  (`schemathesis`) and asserts responses conform — drift (status code / schema / content type /
+  headers) and security (malformed-input rejection, admin-endpoint auth enforcement per ADR-0013).
+  Needs a reachable server (`./gradlew run` first); configure via `MERCATOR_BASE_URL` (default
+  `http://localhost:8080`), `MERCATOR_API_KEY` (sent as `X-API-Key`), and
+  `SCHEMATHESIS_MAX_EXAMPLES` (default 25 per operation). Requires `schemathesis` (`st`) installed.
+
 ## Testing conventions
 
 - **Prefer stubs over mocks.** Drive behaviour through stubbed inputs and assert on observable
