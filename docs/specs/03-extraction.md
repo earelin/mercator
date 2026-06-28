@@ -97,11 +97,17 @@ recorded **unapplied and flagged**, never guessed. See
 
 ## Roles (cargos)
 
-Cargo acts use standardised abbreviations, all mapped to a canonical enum: `Adm. Unico`,
-`Adm. Solid.`/`ADM.SOLIDAR.`, `Adm. Mancom.`, `Consejero`, `Presidente`, `Secretario`,
-`Cons.Del.Sol`, `Con.Delegado`, `Apoderado`, `Apo.Sol.`, `Apo.Manc.`, `Liquidador`,
-`LiqUnico`, `Auditor`, `Aud.C.Con.`, `Socio único`. Multiple names within a role are
-separated by `;`.
+Cargo acts use standardised abbreviations, all mapped to a canonical enum. The most common are
+`Adm. Unico`, `Adm. Solid.`/`ADM.SOLIDAR.`, `Adm. Mancom.`, `Consejero`, `Presidente`,
+`Secretario`, `Cons.Del.Sol`, `Con.Delegado`, `Apoderado`, `Apo.Sol.`, `Apo.Manc.`,
+`Liquidador`, `LiqUnico`, `Auditor`, `Aud.C.Con.`, `Socio único`. Multiple names within a role
+are separated by `;`.
+
+The full canonical vocabulary is the bormeparser cargo taxonomy ([ADR-0012](../architecture/0012-reuse-bormeparser-dictionaries-gpl.md))
+ported to `net.earelin.mercator.domain.parse.Cargo`: the 16 codes above are seeded by the V1.0.0
+baseline and the remaining ~370 by a later additive migration, so the `appointment.role` foreign
+key accepts any cargo the parser canonicalises. The thousands of BORME spelling/spacing variants
+map onto this set.
 
 ## Quality target
 
