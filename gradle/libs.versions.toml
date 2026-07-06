@@ -7,7 +7,7 @@ cpd-plugin        = "3.5"
 errorprone        = "2.50.0"
 errorprone-plugin = "5.1.0"
 findsecbugs       = "1.14.0"
-flyway            = "12.9.0"
+flyway            = "12.10.0"
 jakarta-inject    = "2.0.1"
 jsoup             = "1.22.2"
 junit-jupiter     = "6.1.1"
@@ -16,7 +16,7 @@ mockito           = "5.23.0"
 nullaway          = "0.13.7"
 pdfbox            = "3.0.7"
 pmd               = "7.24.0"
-postgresql        = "42.7.11"
+postgresql        = "42.7.12"
 rest-assured      = "6.0.0"
 slf4j             = "2.0.18"
 spotbugs-plugin   = "6.5.8"
@@ -52,5 +52,5 @@ wiremock                  = { module = "org.wiremock:wiremock-standalone",      
 [plugins]
 cpd                   = { id = "de.aaschmid.cpd",          version.ref = "cpd-plugin" }
 errorprone            = { id = "net.ltgt.errorprone",      version.ref = "errorprone-plugin" }
-micronaut-application = { id = "io.micronaut.application", version = "5.0.1" }
+micronaut-application = { id = "io.micronaut.application", version = "5.0.2" }
 spotbugs              = { id = "com.github.spotbugs",      version.ref = "spotbugs-plugin" }
