@@ -22,7 +22,7 @@ services:
     profiles: [ app ]
 
   db:
-    image: postgres:18.4
+    image: postgres:18.6
     volumes:
       - db_data:/var/lib/postgresql/18/docker
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
